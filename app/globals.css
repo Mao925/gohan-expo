@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: 'Inter', 'Helvetica Neue', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #fefcf8;
+  color: #1f1e1d;
+  min-height: 100vh;
+}
+
+* {
+  border-color: rgb(0 0 0 / 0.08);
+}
