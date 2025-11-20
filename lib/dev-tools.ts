@@ -1,6 +1,15 @@
-const DEV_APPROVE_ENDPOINT = process.env.NEXT_PUBLIC_DEV_APPROVE_ENDPOINT;
-const DEV_RESET_ENDPOINT = process.env.NEXT_PUBLIC_DEV_RESET_ENDPOINT;
-const DEV_RESET_LIKE_ENDPOINT = process.env.NEXT_PUBLIC_DEV_RESET_LIKE_ENDPOINT;
+import { API_BASE_URL } from './api';
+
+function resolveEndpoint(envValue: string | undefined, fallbackPath: string) {
+  if (envValue && envValue.length > 0) return envValue;
+  if (!API_BASE_URL) return undefined;
+  const base = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+  return `${base}${fallbackPath}`;
+}
+
+const DEV_APPROVE_ENDPOINT = resolveEndpoint(process.env.NEXT_PUBLIC_DEV_APPROVE_ENDPOINT, '/api/dev/approve-me');
+const DEV_RESET_ENDPOINT = resolveEndpoint(process.env.NEXT_PUBLIC_DEV_RESET_ENDPOINT, '/api/dev/reset-status');
+const DEV_RESET_LIKE_ENDPOINT = resolveEndpoint(process.env.NEXT_PUBLIC_DEV_RESET_LIKE_ENDPOINT, '/api/dev/reset-like-state');
 
 export async function triggerDevApprove(token: string) {
   if (!DEV_APPROVE_ENDPOINT) throw new Error('DEV APPROVE ENDPOINT is not defined');
