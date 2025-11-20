@@ -15,12 +15,18 @@ type RegisterPayload = Credentials & {
   name: string;
 };
 
+type AdminRegisterPayload = RegisterPayload & {
+  adminInviteCode: string;
+};
+
 type AuthContextValue = {
   token: string | null;
   user: User | null;
   isLoading: boolean;
   login: (payload: Credentials) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  adminLogin: (payload: Credentials) => Promise<void>;
+  adminRegister: (payload: AdminRegisterPayload) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 };
@@ -109,6 +115,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [handleAuthSuccess]
   );
 
+  const adminLogin = useCallback(
+    async (payload: Credentials) => {
+      const result = await apiFetch<{ token: string; user: User }>('/api/admin/login', {
+        method: 'POST',
+        data: payload
+      });
+      if (!result.user.isAdmin) {
+        throw new Error('管理者権限のあるアカウントではありません');
+      }
+      handleAuthSuccess(result);
+    },
+    [handleAuthSuccess]
+  );
+
+  const adminRegister = useCallback(
+    async (payload: AdminRegisterPayload) => {
+      const result = await apiFetch<{ token: string; user: User }>('/api/auth/register-admin', {
+        method: 'POST',
+        data: payload
+      });
+      if (!result.user.isAdmin) {
+        throw new Error('管理者登録に失敗しました');
+      }
+      handleAuthSuccess(result);
+    },
+    [handleAuthSuccess]
+  );
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
@@ -121,6 +155,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     login,
     register,
+    adminLogin,
+    adminRegister,
     logout,
     refreshUser
   };
