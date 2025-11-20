@@ -15,29 +15,28 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/auth-context';
 import { CommunityStatus } from '@/lib/types';
 import { useCommunityStatus } from '@/hooks/use-community-status';
-import { DEV_APPROVE_ENDPOINT, triggerDevApprove } from '@/lib/dev-tools';
 
 const schema = z.object({
+  communityName: z.string().min(2, 'コミュニティ名を入力してください'),
   communityCode: z.string().length(8, '8桁のコードを入力してください')
 });
 
-const STORAGE_KEY = 'gohan_last_community_code';
+const STORAGE_KEY = 'gohan_last_community_join';
 
 type FormValues = z.infer<typeof schema>;
 
 type JoinResponse = {
   status: CommunityStatus;
+  communityName?: string;
 };
 
 export default function CommunityJoinPage() {
   const { token, refreshUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [devLoading, setDevLoading] = useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { communityCode: '' }
+    defaultValues: { communityName: '', communityCode: '' }
   });
-  const showDevShortcut = process.env.NODE_ENV !== 'production' && Boolean(DEV_APPROVE_ENDPOINT && token);
 
   const {
     data: statusData,
@@ -54,7 +53,7 @@ export default function CommunityJoinPage() {
         await refreshUser();
       }
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(STORAGE_KEY, variables.communityCode);
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(variables));
       }
       form.reset();
     }
@@ -71,6 +70,7 @@ export default function CommunityJoinPage() {
   const badgeStatus = statusData?.status ?? 'UNAPPLIED';
   const statusErrorMessage = (statusError as ApiError | undefined)?.message ?? null;
   const combinedError = error ?? statusErrorMessage;
+  const showCommunityName = badgeStatus === 'APPROVED' && statusData?.communityName;
 
   return (
     <div className="space-y-6">
@@ -82,7 +82,11 @@ export default function CommunityJoinPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-500">現在のステータス</p>
-            <p className="text-xl font-semibold text-slate-900">{statusData?.communityName ?? 'KING'}</p>
+            {showCommunityName ? (
+              <p className="text-xl font-semibold text-slate-900">{statusData!.communityName}</p>
+            ) : (
+              <p className="text-base text-slate-400">承認済みになるとコミュニティ名が表示されます</p>
+            )}
           </div>
           <StatusPill status={badgeStatus} />
         </div>
@@ -98,6 +102,9 @@ export default function CommunityJoinPage() {
             }
           })}
         >
+          <Field label="コミュニティ名" error={form.formState.errors.communityName?.message}>
+            <Input placeholder="KING" {...form.register('communityName')} />
+          </Field>
           <Field label="8桁のコミュニティコード" error={form.formState.errors.communityCode?.message}>
             <Input placeholder="ABCD1234" maxLength={8} {...form.register('communityCode')} />
           </Field>
@@ -105,34 +112,6 @@ export default function CommunityJoinPage() {
             {joinMutation.isPending ? '送信中...' : badgeStatus === 'UNAPPLIED' ? '参加申請する' : '再申請する'}
           </Button>
         </form>
-        {showDevShortcut ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-orange-200 bg-orange-50 p-4 text-sm text-slate-600">
-            <p className="font-semibold text-slate-800">開発モード</p>
-            <p className="mt-1">承認状態を即時テストしたい場合は以下を利用してください。</p>
-            <Button
-              type="button"
-              variant="ghost"
-              className="mt-3 border border-orange-200"
-              disabled={devLoading}
-              onClick={async () => {
-                if (!DEV_APPROVE_ENDPOINT || !token) return;
-                setDevLoading(true);
-                setError(null);
-                try {
-                  await triggerDevApprove(token);
-                  await refetch();
-                  await refreshUser();
-                } catch (err: any) {
-                  setError(err?.message ?? '承認モードの呼び出しに失敗しました');
-                } finally {
-                  setDevLoading(false);
-                }
-              }}
-            >
-              {devLoading ? '更新中...' : '開発用: 即承認する'}
-            </Button>
-          </div>
-        ) : null}
       </Card>
     </div>
   );
