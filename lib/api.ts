@@ -7,26 +7,32 @@ export type ApiRequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   data?: unknown;
   token?: string | null;
+  headers?: Record<string, string>;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+const API_BASE_URL = `${RAW_API_BASE_URL.replace(/\/+$/, '')}/`;
 
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { method = 'GET', data, token } = options;
-
+  const { method = 'GET', data, token, headers: customHeaders } = options;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    ...(customHeaders ?? {})
   };
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const normalizedPath = path.replace(/^\/+/, '');
+  const url = new URL(normalizedPath, API_BASE_URL);
+
+  const response = await fetch(url.toString(), {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    cache: 'no-store'
+    cache: 'no-store',
+    credentials: 'include'
   });
 
   if (!response.ok) {
