@@ -138,6 +138,25 @@ export default function LikePage() {
     onError: (err: any) => setError(err?.message ?? "再申請に失敗しました"),
   });
 
+  const statusValue = statusData?.status ?? "UNAPPLIED";
+  const autoJoinAttempted = useRef(false);
+
+  useEffect(() => {
+    if (
+      statusValue === "UNAPPLIED" &&
+      lastCode &&
+      token &&
+      !retryJoinPending &&
+      !autoJoinAttempted.current
+    ) {
+      autoJoinAttempted.current = true;
+      mutateRetryJoin(undefined);
+    }
+    if (statusValue !== "UNAPPLIED") {
+      autoJoinAttempted.current = false;
+    }
+  }, [statusValue, lastCode, token, retryJoinPending, mutateRetryJoin]);
+
   if (!token) {
     return (
       <Card>
@@ -152,7 +171,7 @@ export default function LikePage() {
   };
 
   const handleRetryJoin = () => {
-    mutateRetryJoin();
+    mutateRetryJoin(undefined);
   };
 
   const canResetLikes =
@@ -175,25 +194,6 @@ export default function LikePage() {
     }
     setRefreshIndex((prev) => prev + 1);
   };
-
-  const statusValue = statusData?.status ?? "UNAPPLIED";
-  const autoJoinAttempted = useRef(false);
-
-  useEffect(() => {
-    if (
-      statusValue === "UNAPPLIED" &&
-      lastCode &&
-      token &&
-      !retryJoinPending &&
-      !autoJoinAttempted.current
-    ) {
-      autoJoinAttempted.current = true;
-      mutateRetryJoin();
-    }
-    if (statusValue !== "UNAPPLIED") {
-      autoJoinAttempted.current = false;
-    }
-  }, [statusValue, lastCode, token, retryJoinPending, mutateRetryJoin]);
 
   return (
     <div className="space-y-6">
