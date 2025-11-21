@@ -60,10 +60,20 @@ export default function LoginPage() {
       <ErrorBanner message={error} />
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5">
         <Field label="メールアドレス" error={errors.email?.message}>
-          <Input type="email" placeholder="your@email.com" {...register('email')} />
+          <Input
+            type="email"
+            autoComplete="email"
+            placeholder="your@email.com"
+            {...register('email')}
+          />
         </Field>
         <Field label="パスワード" error={errors.password?.message}>
-          <Input type="password" placeholder="•••••••" {...register('password')} />
+          <Input
+            type="password"
+            autoComplete="current-password"
+            placeholder="•••••••"
+            {...register('password')}
+          />
         </Field>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? '送信中...' : 'ログイン'}

@@ -51,13 +51,23 @@ export default function RegisterPage() {
       <ErrorBanner message={error} />
       <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5">
         <Field label="名前" error={errors.name?.message}>
-          <Input placeholder="山田 太郎" {...register('name')} />
+          <Input placeholder="山田 太郎" autoComplete="name" {...register('name')} />
         </Field>
         <Field label="メールアドレス" error={errors.email?.message}>
-          <Input type="email" placeholder="you@example.com" {...register('email')} />
+          <Input
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            {...register('email')}
+          />
         </Field>
         <Field label="パスワード" error={errors.password?.message}>
-          <Input type="password" placeholder="•••••••" {...register('password')} />
+          <Input
+            type="password"
+            placeholder="•••••••"
+            autoComplete="new-password"
+            {...register('password')}
+          />
         </Field>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? '送信中...' : '登録する'}
