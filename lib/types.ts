@@ -19,6 +19,25 @@ export type Member = {
   isSelf?: boolean;
 };
 
+export type PartnerAnswer = 'YES' | 'NO' | 'UNANSWERED' | 'PENDING' | 'UNKNOWN' | null;
+
+export type MemberRelationship = {
+  id: string;
+  name: string;
+  bio: string;
+  targetUserId?: string;
+  partnerAnswer?: PartnerAnswer;
+  canToggleToYes?: boolean;
+  canToggleToNo?: boolean;
+  matchedAt?: string | null;
+};
+
+export type MemberRelationshipsResponse = {
+  matches?: MemberRelationship[];
+  awaitingResponse?: MemberRelationship[];
+  rejected?: MemberRelationship[];
+};
+
 export type Match = {
   id: string;
   partnerName: string;
