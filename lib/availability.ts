@@ -15,6 +15,16 @@ export const TIMESLOTS: { value: TimeSlot; label: string }[] = [
   { value: 'NIGHT', label: '夜' }
 ];
 
+const WEEKDAY_LABEL_MAP: Record<Weekday, string> = WEEKDAYS.reduce(
+  (map, { value, label }) => ({ ...map, [value]: label }),
+  {} as Record<Weekday, string>
+);
+
+const TIMESLOT_LABEL_MAP: Record<TimeSlot, string> = TIMESLOTS.reduce(
+  (map, { value, label }) => ({ ...map, [value]: label }),
+  {} as Record<TimeSlot, string>
+);
+
 const DEFAULT_STATUS: AvailabilityStatus = 'UNAVAILABLE';
 const VALID_STATUSES: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE'];
 
@@ -66,4 +76,16 @@ export function gridToPayload(grid: AvailabilityGrid): AvailabilitySlotDto[] {
     }
   }
   return payload;
+}
+
+export function getWeekdayLabel(weekday: Weekday): string {
+  return WEEKDAY_LABEL_MAP[weekday] ?? weekday;
+}
+
+export function getTimeSlotLabel(timeSlot: TimeSlot): string {
+  return TIMESLOT_LABEL_MAP[timeSlot] ?? timeSlot;
+}
+
+export function formatAvailabilitySlot(weekday: Weekday, timeSlot: TimeSlot): string {
+  return `${getWeekdayLabel(weekday)} ${getTimeSlotLabel(timeSlot)}`;
 }

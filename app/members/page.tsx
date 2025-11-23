@@ -8,7 +8,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/error-banner';
 import { ApiError, apiFetch } from '@/lib/api';
-import { Member, MemberRelationship, MemberRelationshipsResponse } from '@/lib/types';
+import { fetchOverlapAvailability } from '@/lib/api/availability';
+import { formatAvailabilitySlot } from '@/lib/availability';
+import { Member, MemberRelationship, MemberRelationshipsResponse, OverlapSlotDto } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { useCommunityStatus } from '@/hooks/use-community-status';
 
@@ -21,6 +23,12 @@ type RelationshipLists = {
   matches: MemberRelationship[];
   awaitingResponse: MemberRelationship[];
   rejected: MemberRelationship[];
+};
+
+type OverlapState = {
+  isLoading: boolean;
+  slots: OverlapSlotDto[] | null;
+  error: string | null;
 };
 
 const STORAGE_KEY = 'gohan_last_community_join';
@@ -38,6 +46,7 @@ export default function MembersPage() {
     awaitingResponse: [],
     rejected: []
   });
+  const [overlapStates, setOverlapStates] = useState<Record<string, OverlapState>>({});
 
   const getTargetUserId = useCallback((member: MemberRelationship | null | undefined) => {
     if (!member) return null;
@@ -207,6 +216,35 @@ export default function MembersPage() {
     onError: (err: any) => setPendingMessage(err?.message ?? '再申請に失敗しました')
   });
 
+  const handleCheckSchedule = useCallback(
+    async (partnerUserId: string) => {
+      setOverlapStates((prev) => ({
+        ...prev,
+        [partnerUserId]: { isLoading: true, slots: prev[partnerUserId]?.slots ?? null, error: null }
+      }));
+      try {
+        const slots = await fetchOverlapAvailability(partnerUserId, token);
+        setOverlapStates((prev) => ({
+          ...prev,
+          [partnerUserId]: { isLoading: false, slots, error: null }
+        }));
+      } catch (err) {
+        const apiError = err as ApiError | undefined;
+        let message = apiError?.message ?? '取得に失敗しました';
+        if (apiError?.status === 403) {
+          message = 'この相手の日程は参照できません';
+        } else if (apiError?.status === 500) {
+          message = 'サーバーエラーが発生しました';
+        }
+        setOverlapStates((prev) => ({
+          ...prev,
+          [partnerUserId]: { isLoading: false, slots: null, error: message }
+        }));
+      }
+    },
+    [token]
+  );
+
   if (!token) {
     return (
       <Card>
@@ -284,6 +322,41 @@ export default function MembersPage() {
             description="両想いになったお相手です。"
             emptyMessage="まだマッチはありません。"
             members={relationshipMatches}
+            renderAction={(member) => {
+              const targetId = getTargetUserId(member);
+              if (!targetId) return null;
+              const state = overlapStates[targetId];
+              const isLoading = Boolean(state?.isLoading);
+              return (
+                <Button type="button" size="sm" onClick={() => handleCheckSchedule(targetId)} disabled={isLoading}>
+                  {isLoading ? '確認中...' : '日程を確認'}
+                </Button>
+              );
+            }}
+            renderDetail={(member) => {
+              const targetId = getTargetUserId(member);
+              if (!targetId) return null;
+              const state = overlapStates[targetId];
+              if (!state) return null;
+              if (state.isLoading) {
+                return <p className="text-sm text-slate-500">確認中...</p>;
+              }
+              if (state.error) {
+                return <p className="text-sm font-semibold text-red-600">{state.error}</p>;
+              }
+              if (state.slots && state.slots.length === 0) {
+                return <p className="text-sm text-slate-600">一致している日程がありません</p>;
+              }
+              if (state.slots && state.slots.length > 0) {
+                return (
+                  <p className="text-sm text-slate-700">
+                    <span className="font-semibold text-slate-900">共通の空き:</span>{' '}
+                    {state.slots.map((slot) => formatAvailabilitySlot(slot.weekday, slot.timeSlot)).join(' / ')}
+                  </p>
+                );
+              }
+              return null;
+            }}
           />
           <RelationshipSection
             title="回答待ち（自分は YES）"
@@ -381,9 +454,10 @@ type RelationshipSectionProps = {
   emptyMessage: string;
   members: MemberRelationship[];
   renderAction?: (member: MemberRelationship) => ReactNode;
+  renderDetail?: (member: MemberRelationship) => ReactNode;
 };
 
-function RelationshipSection({ title, description, emptyMessage, members, renderAction }: RelationshipSectionProps) {
+function RelationshipSection({ title, description, emptyMessage, members, renderAction, renderDetail }: RelationshipSectionProps) {
   return (
     <section className="space-y-3">
       <div>
@@ -406,6 +480,7 @@ function RelationshipSection({ title, description, emptyMessage, members, render
                 key={identifier ?? `relationship-${index}`}
                 member={member}
                 action={renderAction ? renderAction(member) : null}
+                detail={renderDetail ? renderDetail(member) : null}
               />
             );
           })}
@@ -422,9 +497,10 @@ function RelationshipSection({ title, description, emptyMessage, members, render
 type RelationshipCardProps = {
   member: MemberRelationship;
   action?: ReactNode;
+  detail?: ReactNode;
 };
 
-function RelationshipCard({ member, action }: RelationshipCardProps) {
+function RelationshipCard({ member, action, detail }: RelationshipCardProps) {
   return (
     <Card className="flex flex-col gap-3 border border-orange-100 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -432,6 +508,7 @@ function RelationshipCard({ member, action }: RelationshipCardProps) {
         {action ? <div>{action}</div> : null}
       </div>
       <p className="text-sm text-slate-600">{member.bio}</p>
+      {detail ? <div className="rounded-2xl bg-orange-50 px-4 py-3">{detail}</div> : null}
     </Card>
   );
 }
