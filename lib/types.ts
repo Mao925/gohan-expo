@@ -57,3 +57,9 @@ export type JoinRequest = {
   email: string;
   requestedAt: string;
 };
+
+export type Weekday = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
+export type TimeSlot = 'DAY' | 'NIGHT';
+export type AvailabilityStatus = 'AVAILABLE' | 'UNAVAILABLE';
+export type AvailabilitySlotDto = { weekday: Weekday; timeSlot: TimeSlot; status: AvailabilityStatus };
+export type AvailabilityGrid = Record<Weekday, Record<TimeSlot, AvailabilityStatus>>;

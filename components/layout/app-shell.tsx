@@ -10,6 +10,7 @@ const baseNavItems = [
   { href: "/members", label: "メンバー" },
   { href: "/match/like", label: "ご飯に行きたい" },
   { href: "/matches", label: "マッチ一覧" },
+  { href: "/availability", label: "日程調整" },
   { href: "/community/join", label: "コミュニティ申請" },
   { href: "/profile", label: "プロフィール" },
 ];
@@ -18,7 +19,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout, isLoading } = useAuth();
   const navItems = user?.isAdmin
-    ? [...baseNavItems, { href: "/admin", label: "承認待ち" }]
+    ? [
+        ...baseNavItems.filter((item) => item.href !== "/availability"),
+        { href: "/admin", label: "承認待ち" },
+      ]
     : baseNavItems;
 
   if (isLoading) {
