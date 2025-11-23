@@ -174,8 +174,8 @@ export default function LikePage() {
     mutateRetryJoin(undefined);
   };
 
-  const canResetLikes =
-    process.env.NODE_ENV !== "production" && Boolean(DEV_RESET_LIKE_ENDPOINT);
+  // リセット用エンドポイントが設定されていれば本番でも有効にする
+  const canResetLikes = Boolean(DEV_RESET_LIKE_ENDPOINT);
 
   const handleRefreshCandidate = async () => {
     if (canResetLikes && token) {
