@@ -24,6 +24,7 @@ type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
   login: (payload: Credentials) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   adminLogin: (payload: Credentials) => Promise<void>;
   adminRegister: (payload: AdminRegisterPayload) => Promise<void>;
@@ -104,6 +105,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [handleAuthSuccess]
   );
 
+  const loginWithToken = useCallback(
+    async (nextToken: string) => {
+      setToken(nextToken);
+      persistToken(nextToken);
+      try {
+        const me = await apiFetch<User>('/api/auth/me', { token: nextToken });
+        setUser(me);
+      } catch (error) {
+        setToken(null);
+        persistToken(null);
+        setUser(null);
+        throw error;
+      }
+    },
+    [persistToken]
+  );
+
   const register = useCallback(
     async (payload: RegisterPayload) => {
       const result = await apiFetch<{ token: string; user: User }>('/api/auth/register', {
@@ -154,6 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     isLoading,
     login,
+    loginWithToken,
     register,
     adminLogin,
     adminRegister,
