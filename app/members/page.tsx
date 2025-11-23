@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/error-banner';
 import { ApiError, apiFetch } from '@/lib/api';
-import { Member, MemberRelationship, MemberRelationshipsResponse, PartnerAnswer } from '@/lib/types';
+import { Member, MemberRelationship, MemberRelationshipsResponse } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { useCommunityStatus } from '@/hooks/use-community-status';
 
@@ -432,21 +432,6 @@ function RelationshipCard({ member, action }: RelationshipCardProps) {
         {action ? <div>{action}</div> : null}
       </div>
       <p className="text-sm text-slate-600">{member.bio}</p>
-      <p className="text-xs font-medium text-slate-500">相手の回答: {formatPartnerAnswer(member.partnerAnswer)}</p>
     </Card>
   );
-}
-
-function formatPartnerAnswer(answer?: PartnerAnswer) {
-  switch (answer) {
-    case 'YES':
-      return 'YES';
-    case 'NO':
-      return 'NO';
-    case 'UNANSWERED':
-    case 'PENDING':
-    case 'UNKNOWN':
-    default:
-      return '未回答';
-  }
 }
