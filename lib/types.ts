@@ -63,3 +63,4 @@ export type TimeSlot = 'DAY' | 'NIGHT';
 export type AvailabilityStatus = 'AVAILABLE' | 'UNAVAILABLE';
 export type AvailabilitySlotDto = { weekday: Weekday; timeSlot: TimeSlot; status: AvailabilityStatus };
 export type AvailabilityGrid = Record<Weekday, Record<TimeSlot, AvailabilityStatus>>;
+export type OverlapSlotDto = { weekday: Weekday; timeSlot: TimeSlot };
