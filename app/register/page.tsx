@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/forms/field';
 import { ErrorBanner } from '@/components/error-banner';
 import { useAuth } from '@/context/auth-context';
+import { API_BASE_URL } from '@/lib/api';
 
 const schema = z.object({
   name: z.string().min(2, '2文字以上で入力してください'),
@@ -44,6 +45,11 @@ export default function RegisterPage() {
     }
   };
 
+  const handleLineRegister = () => {
+    const url = new URL('/api/auth/line/login', API_BASE_URL).toString();
+    window.location.href = url;
+  };
+
   return (
     <Card className="mx-auto max-w-md">
       <h2 className="text-2xl font-semibold text-slate-900">新規登録</h2>
@@ -71,6 +77,18 @@ export default function RegisterPage() {
         </Field>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? '送信中...' : '登録する'}
+        </Button>
+        <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          <span>または</span>
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+        <Button
+          type="button"
+          className="w-full bg-[#06c755] text-white hover:bg-[#05b24c]"
+          onClick={handleLineRegister}
+        >
+          LINEで新規登録
         </Button>
         <p className="text-center text-sm text-slate-600">
           すでにアカウントをお持ちですか？{' '}
