@@ -17,7 +17,7 @@ export default function LineCallbackPage() {
   const [message, setMessage] = useState('LINEアカウントでの認証を確認しています...');
 
   const token = searchParams?.get('token');
-  const isNewUser = searchParams?.get('newUser') === 'true';
+  const isNewUser = searchParams?.get('newUser')?.toLowerCase() === 'true';
 
   const destination = useMemo(() => (isNewUser ? '/profile' : '/community/join'), [isNewUser]);
 
@@ -37,14 +37,14 @@ export default function LineCallbackPage() {
             ? '登録が完了しました。プロフィール設定に進みます。'
             : 'ログインに成功しました。コミュニティに移動します。'
         );
-        router.replace(isNewUser ? '/profile' : '/community/join');
+        router.replace(destination);
       } catch (error) {
         console.error('LINE login failed', error);
         setStatus('error');
         setMessage('ログインに失敗しました。お手数ですが再度お試しください。');
       }
     })();
-  }, [isNewUser, loginWithToken, router, token]);
+  }, [destination, isNewUser, loginWithToken, router, token]);
 
   return (
     <Card className="mx-auto max-w-md space-y-4 text-center">
