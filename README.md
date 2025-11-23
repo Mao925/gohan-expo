@@ -30,6 +30,8 @@ NEXT_PUBLIC_SEED_EMAIL=seed@example.com           # 任意
 NEXT_PUBLIC_SEED_PASSWORD=password123             # 任意
 ```
 
+本番ビルドで固定の API を参照したい場合は、`cp .env.production.example .env.production` を実行し、`NEXT_PUBLIC_API_BASE_URL` を本番サーバーの URL（例: `https://gohan-nest-production.up.railway.app`）に設定します。Vercel へデプロイする場合は、Vercel の Project Settings > Environment Variables で Production / Preview / Development それぞれに `NEXT_PUBLIC_API_BASE_URL` を登録すると安全です。
+
 4. 開発サーバーを起動:
 
 ```bash
