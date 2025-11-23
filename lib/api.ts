@@ -10,7 +10,8 @@ export type ApiRequestOptions = {
   headers?: Record<string, string>;
 };
 
-const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+const DEFAULT_API_BASE_URL = 'https://gohan-nest-production.up.railway.app';
+const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 const API_BASE_URL = RAW_API_BASE_URL.endsWith('/') ? RAW_API_BASE_URL : `${RAW_API_BASE_URL}/`;
 
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
