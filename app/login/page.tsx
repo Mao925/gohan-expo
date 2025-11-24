@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/forms/field';
 import { ErrorBanner } from '@/components/error-banner';
 import { useAuth } from '@/context/auth-context';
-import { ApiError, API_BASE_URL } from '@/lib/api';
+import { ApiError, API_BASE_URL, SERVER_UNAVAILABLE_MESSAGE } from '@/lib/api';
 
 const seedEmail = process.env.NEXT_PUBLIC_SEED_EMAIL;
 const seedPassword = process.env.NEXT_PUBLIC_SEED_PASSWORD;
@@ -47,6 +47,8 @@ export default function LoginPage() {
       const apiError = err as ApiError | undefined;
       if (apiError?.status === 401) {
         setError('メールアドレスまたはパスワードが正しくありません。確認のうえ再度お試しください。');
+      } else if (apiError?.isServerError) {
+        setError(SERVER_UNAVAILABLE_MESSAGE);
       } else {
         setError(apiError?.message ?? 'ログインに失敗しました');
       }
