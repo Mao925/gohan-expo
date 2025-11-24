@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/forms/field';
 import { ErrorBanner } from '@/components/error-banner';
 import { useAuth } from '@/context/auth-context';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, ApiError, SERVER_UNAVAILABLE_MESSAGE } from '@/lib/api';
 
 const schema = z.object({
   name: z.string().min(2, '2文字以上で入力してください'),
@@ -41,7 +41,12 @@ export default function RegisterPage() {
       await registerUser(values);
       router.push('/profile');
     } catch (err: any) {
-      setError(err?.message ?? '登録に失敗しました');
+      const apiError = err as ApiError | undefined;
+      if (apiError?.isServerError) {
+        setError(SERVER_UNAVAILABLE_MESSAGE);
+      } else {
+        setError(apiError?.message ?? '登録に失敗しました');
+      }
     }
   };
 

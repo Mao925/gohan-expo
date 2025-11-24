@@ -1,6 +1,8 @@
 export type ApiError = {
   message: string;
   status?: number;
+  isServerError?: boolean;
+  isNetworkError?: boolean;
 };
 
 export type ApiRequestOptions = {
@@ -13,6 +15,7 @@ export type ApiRequestOptions = {
 const DEFAULT_API_BASE_URL = 'https://gohan-nest-production.up.railway.app';
 const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL;
 const API_BASE_URL = RAW_API_BASE_URL.endsWith('/') ? RAW_API_BASE_URL : `${RAW_API_BASE_URL}/`;
+const SERVER_UNAVAILABLE_MESSAGE = '現在サーバー側で問題が発生しています。時間をおいて再度お試しください。';
 
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = 'GET', data, token, headers: customHeaders } = options;
@@ -29,23 +32,37 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   const normalizedPath = path.replace(/^\/+/, '');
   const url = new URL(normalizedPath, API_BASE_URL).toString();
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    cache: 'no-store',
-    credentials: 'include'
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+      cache: 'no-store',
+      credentials: 'include'
+    });
+  } catch (error) {
+    const networkError: ApiError = {
+      message: SERVER_UNAVAILABLE_MESSAGE,
+      isNetworkError: true,
+      isServerError: true
+    };
+    throw networkError;
+  }
 
   if (!response.ok) {
-    let message = 'サーバーでエラーが発生しました';
+    const isServerError = response.status >= 500;
+    let message = isServerError ? SERVER_UNAVAILABLE_MESSAGE : 'サーバーでエラーが発生しました';
     try {
       const errorBody = await response.json();
       message = errorBody?.message ?? message;
+      if (isServerError) {
+        message = SERVER_UNAVAILABLE_MESSAGE;
+      }
     } catch (error) {
       // ignore
     }
-    const error: ApiError = { message, status: response.status };
+    const error: ApiError = { message, status: response.status, isServerError };
     throw error;
   }
 
@@ -56,4 +73,4 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   return (await response.json()) as T;
 }
 
-export { API_BASE_URL };
+export { API_BASE_URL, SERVER_UNAVAILABLE_MESSAGE };
