@@ -299,6 +299,7 @@ export default function MembersPage() {
   const relationshipMatches = relationshipLists.matches;
   const relationshipAwaitingResponse = relationshipLists.awaitingResponse;
   const relationshipRejected = relationshipLists.rejected;
+  const myFavoriteMeals = membersData?.find((member) => member.isSelf)?.favoriteMeals ?? [];
 
   return (
     <div className="space-y-6">
@@ -437,7 +438,7 @@ export default function MembersPage() {
                     onRemove: (id: string) => removeMemberMutation.mutate(id)
                   }
                 : undefined;
-            return <MemberCard key={member.id} member={member} {...(removableProps ?? {})} />;
+            return <MemberCard key={member.id} member={member} myFavoriteMeals={myFavoriteMeals} {...(removableProps ?? {})} />;
           })}
         </div>
       ) : (

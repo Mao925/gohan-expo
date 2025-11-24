@@ -11,9 +11,11 @@ interface Props {
   member: Member;
   onRemove?: (id: string) => void;
   canRemove?: boolean;
+  // 自分の favoriteMeals
+  myFavoriteMeals?: string[];
 }
 
-export function MemberCard({ member, onRemove, canRemove }: Props) {
+export function MemberCard({ member, onRemove, canRemove, myFavoriteMeals }: Props) {
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -40,7 +42,7 @@ export function MemberCard({ member, onRemove, canRemove }: Props) {
           ) : null}
         </div>
       </div>
-      <FavoriteMealsList meals={member.favoriteMeals} />
+      <FavoriteMealsList meals={member.favoriteMeals} highlightMeals={myFavoriteMeals} />
       {confirming && canRemove && onRemove ? (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
