@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 const baseNavItems = [
   { href: "/members", label: "メンバー" },
   { href: "/match/like", label: "ご飯に行きたい" },
-  { href: "/matches", label: "マッチ一覧" },
   { href: "/availability", label: "日程調整" },
   { href: "/community/join", label: "コミュニティ申請" },
   { href: "/profile", label: "プロフィール" },
