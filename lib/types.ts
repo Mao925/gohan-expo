@@ -6,8 +6,9 @@ export type User = {
 };
 
 export type Profile = {
+  id: string;
   name: string;
-  bio: string;
+  favoriteMeals: string[];
 };
 
 export type CommunityStatus = 'UNAPPLIED' | 'PENDING' | 'APPROVED';
@@ -15,7 +16,7 @@ export type CommunityStatus = 'UNAPPLIED' | 'PENDING' | 'APPROVED';
 export type Member = {
   id: string;
   name: string;
-  bio: string;
+  favoriteMeals: string[];
   isSelf?: boolean;
 };
 
@@ -24,7 +25,7 @@ export type PartnerAnswer = 'YES' | 'NO' | 'UNANSWERED' | 'PENDING' | 'UNKNOWN' 
 export type MemberRelationship = {
   id: string;
   name: string;
-  bio: string;
+  favoriteMeals: string[];
   targetUserId?: string;
   partnerAnswer?: PartnerAnswer;
   canToggleToYes?: boolean;
@@ -41,14 +42,14 @@ export type MemberRelationshipsResponse = {
 export type Match = {
   id: string;
   partnerName: string;
-  partnerBio: string;
+  partnerFavoriteMeals: string[];
   matchedAt: string;
 };
 
 export type MatchCandidate = {
   id: string;
   name: string;
-  bio: string;
+  favoriteMeals: string[];
 };
 
 export type JoinRequest = {

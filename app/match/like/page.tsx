@@ -11,6 +11,7 @@ import { MatchCandidate } from "@/lib/types";
 import { useAuth } from "@/context/auth-context";
 import { useCommunityStatus } from "@/hooks/use-community-status";
 import { DEV_RESET_LIKE_ENDPOINT, triggerDevResetLikes } from "@/lib/dev-tools";
+import { FavoriteMealsList } from "@/components/favorite-meals-list";
 
 const STORAGE_KEY = "gohan_last_community_join";
 type StoredJoin = {
@@ -266,7 +267,10 @@ export default function LikePage() {
             <h2 className="mt-4 text-3xl font-semibold text-slate-900">
               {candidate.name}
             </h2>
-            <p className="mt-4 text-base text-slate-600">{candidate.bio}</p>
+            <div className="mt-4 space-y-2 text-left">
+              <p className="text-sm font-semibold text-slate-700">好きなご飯</p>
+              <FavoriteMealsList meals={candidate.favoriteMeals} />
+            </div>
           </Card>
           <div className="grid gap-4 sm:grid-cols-2">
             <Button

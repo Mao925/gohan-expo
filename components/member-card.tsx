@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Member } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { FavoriteMealsList } from './favorite-meals-list';
 
 interface Props {
   member: Member;
@@ -39,7 +40,7 @@ export function MemberCard({ member, onRemove, canRemove }: Props) {
           ) : null}
         </div>
       </div>
-      <p className="text-sm text-slate-600">{member.bio}</p>
+      <FavoriteMealsList meals={member.favoriteMeals} />
       {confirming && canRemove && onRemove ? (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />

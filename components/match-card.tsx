@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Match } from '@/lib/types';
+import { FavoriteMealsList } from './favorite-meals-list';
 
 interface Props {
   match: Match;
@@ -22,7 +23,8 @@ export function MatchCard({ match }: Props) {
         <p className="text-sm text-slate-500">{formatted}</p>
       </CardHeader>
       <CardContent>
-        <p className="text-slate-600">{match.partnerBio}</p>
+        <p className="text-sm font-semibold text-slate-700">好きなご飯</p>
+        <FavoriteMealsList meals={match.partnerFavoriteMeals} />
       </CardContent>
     </Card>
   );
