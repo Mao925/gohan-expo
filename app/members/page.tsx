@@ -13,6 +13,7 @@ import { formatAvailabilitySlot } from '@/lib/availability';
 import { Member, MemberRelationship, MemberRelationshipsResponse, OverlapSlotDto } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { useCommunityStatus } from '@/hooks/use-community-status';
+import { FavoriteMealsList } from '@/components/favorite-meals-list';
 
 type StoredJoin = {
   communityCode: string;
@@ -507,7 +508,7 @@ function RelationshipCard({ member, action, detail }: RelationshipCardProps) {
         <p className="text-lg font-semibold text-slate-900">{member.name}</p>
         {action ? <div>{action}</div> : null}
       </div>
-      <p className="text-sm text-slate-600">{member.bio}</p>
+      <FavoriteMealsList meals={member.favoriteMeals} />
       {detail ? <div className="rounded-2xl bg-orange-50 px-4 py-3">{detail}</div> : null}
     </Card>
   );

@@ -12,6 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { MatchCard } from '@/components/match-card';
 import { useCommunityStatus } from '@/hooks/use-community-status';
 import { Button } from '@/components/ui/button';
+import { FavoriteMealsList } from '@/components/favorite-meals-list';
 
 type StoredJoin = {
   communityCode: string;
@@ -130,7 +131,8 @@ export default function MatchesPage() {
                 <DialogHeader>
                   <DialogTitle>{match.partnerName}</DialogTitle>
                 </DialogHeader>
-                <p className="text-sm text-slate-600">{match.partnerBio}</p>
+                <p className="text-sm font-semibold text-slate-700">好きなご飯</p>
+                <FavoriteMealsList meals={match.partnerFavoriteMeals} />
                 <p className="mt-4 text-sm text-slate-500">マッチしました。連絡先はご自身で交換してください。</p>
               </DialogContent>
             </Dialog>

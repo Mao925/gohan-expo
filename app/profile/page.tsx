@@ -7,17 +7,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/forms/field';
 import { ErrorBanner } from '@/components/error-banner';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/context/auth-context';
 import { Profile } from '@/lib/types';
+import { FAVORITE_MEAL_OPTIONS } from '@/lib/favorite-meal-options';
+import { FavoriteMealsList } from '@/components/favorite-meals-list';
 
 const schema = z.object({
   name: z.string().min(2, '2文字以上で入力してください'),
-  bio: z.string().min(10, '10文字以上で入力してください')
+  favoriteMeals: z.array(z.string()).max(3)
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -27,7 +28,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', bio: '' }
+    defaultValues: { name: '', favoriteMeals: [] }
   });
 
   const { data, isPending } = useQuery<Profile>({
@@ -46,12 +47,17 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (data) {
-      form.reset({ name: data.name, bio: data.bio });
+      form.reset({ name: data.name, favoriteMeals: data.favoriteMeals ?? [] });
     }
   }, [data, form]);
 
   const mutation = useMutation<Profile, any, FormValues>({
-    mutationFn: (values) => apiFetch('/api/profile', { method: 'PUT', data: values, token })
+    mutationFn: (values) =>
+      apiFetch('/api/profile', {
+        method: 'PUT',
+        data: { name: values.name, favoriteMeals: values.favoriteMeals },
+        token
+      })
   });
 
   if (!token) {
@@ -87,13 +93,11 @@ export default function ProfilePage() {
             <Field label="名前" error={form.formState.errors.name?.message}>
               <Input {...form.register('name')} />
             </Field>
-            <Field
-              label="どんな人とご飯に行きたいか"
-              error={form.formState.errors.bio?.message}
-              hint="例）落ち着いた雰囲気が好きで、美味しいものを楽しめる人と話がしたいです"
-            >
-              <Textarea rows={5} {...form.register('bio')} />
-            </Field>
+            <FavoriteMealsSelector
+              selected={form.watch('favoriteMeals')}
+              onChange={(next) => form.setValue('favoriteMeals', next)}
+              error={form.formState.errors.favoriteMeals?.message as string | undefined}
+            />
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? '保存中...' : '保存する'}
             </Button>
@@ -101,5 +105,61 @@ export default function ProfilePage() {
         )}
       </Card>
     </div>
+  );
+}
+
+type FavoriteMealsSelectorProps = {
+  selected: string[];
+  onChange: (next: string[]) => void;
+  error?: string;
+};
+
+function FavoriteMealsSelector({ selected, onChange, error }: FavoriteMealsSelectorProps) {
+  const current = selected ?? [];
+
+  const toggleMeal = (meal: string) => {
+    onChange(
+      current.includes(meal)
+        ? current.filter((m) => m !== meal)
+        : current.length >= 3
+          ? current
+          : [...current, meal]
+    );
+  };
+
+  return (
+    <Field
+      label="好きなご飯（最大3つまで）"
+      hint="好きなご飯を選択してください。3つまで選べます。"
+      error={error}
+    >
+      <div className="space-y-3">
+        <FavoriteMealsList meals={current} placeholder="好きなご飯: 未設定" />
+        <div className="flex flex-wrap gap-2">
+          {FAVORITE_MEAL_OPTIONS.map((meal) => {
+            const isSelected = current.includes(meal);
+            const disabled = !isSelected && current.length >= 3;
+            return (
+              <button
+                key={meal}
+                type="button"
+                onClick={() => toggleMeal(meal)}
+                disabled={disabled}
+                className={`
+                  rounded-full border px-4 py-2 text-sm font-semibold transition
+                  ${isSelected ? 'border-brand bg-brand/10 text-brand' : 'border-slate-200 bg-white text-slate-700 hover:border-brand/50 hover:bg-brand/5'}
+                  ${disabled ? 'cursor-not-allowed opacity-50' : ''}
+                `}
+              >
+                {meal}
+              </button>
+            );
+          })}
+        </div>
+        {current.length >= 3 ? (
+          <p className="text-xs text-slate-500">これ以上は選択できません。</p>
+        ) : null}
+      </div>
+    </Field>
   );
 }
