@@ -10,7 +10,13 @@ import { ErrorBanner } from '@/components/error-banner';
 import { ApiError, apiFetch } from '@/lib/api';
 import { fetchOverlapAvailability } from '@/lib/api/availability';
 import { formatAvailabilitySlot } from '@/lib/availability';
-import { Member, MemberRelationship, MemberRelationshipsResponse, OverlapSlotDto } from '@/lib/types';
+import {
+  Member,
+  MemberRelationship,
+  MemberRelationshipsResponse,
+  OverlapSlotDto,
+  Profile
+} from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { useCommunityStatus } from '@/hooks/use-community-status';
 import { FavoriteMealsList } from '@/components/favorite-meals-list';
@@ -81,6 +87,15 @@ export default function MembersPage() {
       }
     },
     enabled: Boolean(token && statusData?.status === 'APPROVED' && isAdminUser)
+  });
+
+  const { data: profileData } = useQuery<Profile>({
+    queryKey: ['profile', token],
+    queryFn: async () => {
+      if (!token) throw new Error('ログインしてください');
+      return apiFetch<Profile>('/api/profile', { token });
+    },
+    enabled: Boolean(token)
   });
 
   const {
@@ -299,7 +314,8 @@ export default function MembersPage() {
   const relationshipMatches = relationshipLists.matches;
   const relationshipAwaitingResponse = relationshipLists.awaitingResponse;
   const relationshipRejected = relationshipLists.rejected;
-  const myFavoriteMeals = membersData?.find((member) => member.isSelf)?.favoriteMeals ?? [];
+  const myFavoriteMeals =
+    membersData?.find((member) => member.isSelf)?.favoriteMeals ?? profileData?.favoriteMeals ?? [];
 
   return (
     <div className="space-y-6">
@@ -324,6 +340,7 @@ export default function MembersPage() {
             description="両想いになったお相手です。"
             emptyMessage="まだマッチはありません。"
             members={relationshipMatches}
+            highlightMeals={myFavoriteMeals}
             renderAction={(member) => {
               const targetId = getTargetUserId(member);
               if (!targetId) return null;
@@ -365,6 +382,7 @@ export default function MembersPage() {
             description="あなたは YES 済みで、相手の回答を待っている一覧です。"
             emptyMessage="現在は回答待ちの相手がいません。"
             members={relationshipAwaitingResponse}
+            highlightMeals={myFavoriteMeals}
             renderAction={(member) => {
               const targetId = getTargetUserId(member);
               if (!member.canToggleToNo || !targetId) return null;
@@ -399,6 +417,7 @@ export default function MembersPage() {
             description="以前 NO を選んだ相手です。必要なら YES に戻せます。"
             emptyMessage="NO にした相手はいません。"
             members={relationshipRejected}
+            highlightMeals={myFavoriteMeals}
             renderAction={(member) => {
               const targetId = getTargetUserId(member);
               if (!member.canToggleToYes || !targetId) return null;
@@ -455,11 +474,12 @@ type RelationshipSectionProps = {
   description: string;
   emptyMessage: string;
   members: MemberRelationship[];
+  highlightMeals?: string[];
   renderAction?: (member: MemberRelationship) => ReactNode;
   renderDetail?: (member: MemberRelationship) => ReactNode;
 };
 
-function RelationshipSection({ title, description, emptyMessage, members, renderAction, renderDetail }: RelationshipSectionProps) {
+function RelationshipSection({ title, description, emptyMessage, members, highlightMeals, renderAction, renderDetail }: RelationshipSectionProps) {
   return (
     <section className="space-y-3">
       <div>
@@ -481,6 +501,7 @@ function RelationshipSection({ title, description, emptyMessage, members, render
               <RelationshipCard
                 key={identifier ?? `relationship-${index}`}
                 member={member}
+                highlightMeals={highlightMeals}
                 action={renderAction ? renderAction(member) : null}
                 detail={renderDetail ? renderDetail(member) : null}
               />
@@ -498,18 +519,19 @@ function RelationshipSection({ title, description, emptyMessage, members, render
 
 type RelationshipCardProps = {
   member: MemberRelationship;
+  highlightMeals?: string[];
   action?: ReactNode;
   detail?: ReactNode;
 };
 
-function RelationshipCard({ member, action, detail }: RelationshipCardProps) {
+function RelationshipCard({ member, highlightMeals, action, detail }: RelationshipCardProps) {
   return (
     <Card className="flex flex-col gap-3 border border-orange-100 p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-lg font-semibold text-slate-900">{member.name}</p>
         {action ? <div>{action}</div> : null}
       </div>
-      <FavoriteMealsList meals={member.favoriteMeals} />
+      <FavoriteMealsList meals={member.favoriteMeals} highlightMeals={highlightMeals} />
       {detail ? <div className="rounded-2xl bg-orange-50 px-4 py-3">{detail}</div> : null}
     </Card>
   );
