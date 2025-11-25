@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { CalendarDays, Clock3, Loader2, UserRound, Users } from 'lucide-react';
+import { CommunityGate } from '@/components/community/community-gate';
+import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -15,9 +17,15 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { ErrorBanner } from '@/components/error-banner';
 import { useAuth } from '@/context/auth-context';
-import { useCreateGroupMeal, useDeleteGroupMeal, useGroupMeals, useJoinGroupMeal, useLeaveGroupMeal, useRespondGroupMeal } from '@/hooks/use-group-meals';
+import {
+  useCreateGroupMeal,
+  useDeleteGroupMeal,
+  useGroupMeals,
+  useJoinGroupMeal,
+  useLeaveGroupMeal,
+  useRespondGroupMeal
+} from '@/hooks/use-group-meals';
 import { ApiError, GroupMeal, TimeSlot } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
@@ -53,9 +61,7 @@ function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
 }
 
 export default function GroupMealsPage() {
-  const { token, user } = useAuth();
-  const [actionError, setActionError] = useState<string | null>(null);
-  const { data: groupMeals, isPending, error: groupMealsError, refetch } = useGroupMeals();
+  const { token } = useAuth();
 
   if (!token) {
     return (
@@ -64,6 +70,18 @@ export default function GroupMealsPage() {
       </Card>
     );
   }
+
+  return (
+    <CommunityGate>
+      <GroupMealsContent />
+    </CommunityGate>
+  );
+}
+
+function GroupMealsContent() {
+  const { user } = useAuth();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { data: groupMeals, isPending, error: groupMealsError, refetch } = useGroupMeals();
 
   const errorMessage = (groupMealsError as ApiError | undefined)?.message ?? null;
 

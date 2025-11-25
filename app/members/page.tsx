@@ -1,30 +1,18 @@
 'use client';
 
-import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { CommunityGate } from '@/components/community/community-gate';
+import { FavoriteMealsList } from '@/components/favorite-meals-list';
 import { MemberCard } from '@/components/member-card';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/error-banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useAuth } from '@/context/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
 import { fetchOverlapAvailability } from '@/lib/api/availability';
 import { formatAvailabilitySlot } from '@/lib/availability';
-import {
-  Member,
-  MemberRelationship,
-  MemberRelationshipsResponse,
-  OverlapSlotDto,
-  Profile
-} from '@/lib/types';
-import { useAuth } from '@/context/auth-context';
-import { useCommunityStatus } from '@/hooks/use-community-status';
-import { FavoriteMealsList } from '@/components/favorite-meals-list';
-
-type StoredJoin = {
-  communityCode: string;
-  communityName?: string;
-};
+import { Member, MemberRelationship, MemberRelationshipsResponse, OverlapSlotDto, Profile } from '@/lib/types';
 
 type RelationshipLists = {
   matches: MemberRelationship[];
@@ -38,15 +26,29 @@ type OverlapState = {
   error: string | null;
 };
 
-const STORAGE_KEY = 'gohan_last_community_join';
-
 export default function MembersPage() {
+  const { token } = useAuth();
+
+  if (!token) {
+    return (
+      <Card>
+        <p className="text-slate-700">会員限定のページです。まずはログインしてください。</p>
+      </Card>
+    );
+  }
+
+  return (
+    <CommunityGate>
+      <MembersContent />
+    </CommunityGate>
+  );
+}
+
+function MembersContent() {
   const { token, user } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [lastJoin, setLastJoin] = useState<StoredJoin | null>(null);
-  const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useCommunityStatus({ refetchInterval: 15000 });
   const isAdminUser = Boolean(user?.isAdmin);
   const [relationshipLists, setRelationshipLists] = useState<RelationshipLists>({
     matches: [],
@@ -58,17 +60,6 @@ export default function MembersPage() {
   const getTargetUserId = useCallback((member: MemberRelationship | null | undefined) => {
     if (!member) return null;
     return member.targetUserId ?? null;
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      setLastJoin(JSON.parse(raw) as StoredJoin);
-    } catch {
-      setLastJoin(null);
-    }
   }, []);
 
   const {
@@ -86,7 +77,7 @@ export default function MembersPage() {
         throw err;
       }
     },
-    enabled: Boolean(token && statusData?.status === 'APPROVED' && isAdminUser)
+    enabled: Boolean(token && isAdminUser)
   });
 
   const { data: profileData } = useQuery<Profile>({
@@ -113,7 +104,7 @@ export default function MembersPage() {
         throw err;
       }
     },
-    enabled: Boolean(token && statusData?.status === 'APPROVED' && !isAdminUser)
+    enabled: Boolean(token && !isAdminUser)
   });
 
   useEffect(() => {
@@ -127,6 +118,25 @@ export default function MembersPage() {
       rejected: relationshipsData.rejected ?? []
     });
   }, [relationshipsData]);
+
+  const removeMemberMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      if (!token) throw new Error('ログインしてください');
+      return apiFetch('/api/admin/remove-member', {
+        method: 'POST',
+        data: { userId: memberId },
+        token
+      });
+    },
+    onSuccess: async () => {
+      setPendingMessage('メンバーを削除しました。相手には再申請を依頼してください。');
+      await refetchMembers();
+    },
+    onError: (err: any) => setPendingMessage(err?.message ?? 'メンバーの削除に失敗しました')
+  });
+
+  type TogglePayload = { targetUserId: string; relationshipId?: string; answer: 'YES' | 'NO' };
+  type ToggleResponse = { matched?: boolean; member?: MemberRelationship };
 
   const moveRelationshipMember = useCallback(
     (identifier: string, destination: keyof RelationshipLists, override?: MemberRelationship) => {
@@ -156,25 +166,6 @@ export default function MembersPage() {
     },
     []
   );
-
-  const removeMemberMutation = useMutation({
-    mutationFn: async (memberId: string) => {
-      if (!token) throw new Error('ログインしてください');
-      return apiFetch('/api/admin/remove-member', {
-        method: 'POST',
-        data: { userId: memberId },
-        token
-      });
-    },
-    onSuccess: async () => {
-      setPendingMessage('メンバーを削除しました。相手には再申請を依頼してください。');
-      await Promise.all([refetchMembers(), refetchStatus()]);
-    },
-    onError: (err: any) => setPendingMessage(err?.message ?? 'メンバーの削除に失敗しました')
-  });
-
-  type TogglePayload = { targetUserId: string; relationshipId?: string; answer: 'YES' | 'NO' };
-  type ToggleResponse = { matched?: boolean; member?: MemberRelationship };
 
   const toggleRelationshipMutation = useMutation<ToggleResponse, unknown, TogglePayload>({
     mutationFn: async ({ targetUserId, answer }) => {
@@ -215,23 +206,6 @@ export default function MembersPage() {
     }
   });
 
-  const reapplyMutation = useMutation({
-    mutationFn: async () => {
-      if (!token) throw new Error('ログインしてください');
-      if (!lastJoin?.communityCode) throw new Error('コミュニティコードが保存されていません');
-      return apiFetch('/api/community/join', {
-        method: 'POST',
-        data: { communityCode: lastJoin.communityCode },
-        token
-      });
-    },
-    onSuccess: async () => {
-      setPendingMessage('前回のコードで再申請しました。承認をお待ちください。');
-      await refetchStatus();
-    },
-    onError: (err: any) => setPendingMessage(err?.message ?? '再申請に失敗しました')
-  });
-
   const handleCheckSchedule = useCallback(
     async (partnerUserId: string) => {
       setOverlapStates((prev) => ({
@@ -260,46 +234,6 @@ export default function MembersPage() {
     },
     [token]
   );
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">会員限定のページです。まずはログインしてください。</p>
-      </Card>
-    );
-  }
-
-  if (statusLoading) {
-    return (
-      <Card>
-        <p className="text-slate-700">ステータスを確認しています...</p>
-      </Card>
-    );
-  }
-
-  if (statusData?.status !== 'APPROVED') {
-    return (
-      <Card className="space-y-4 border border-orange-100 bg-orange-50 p-6">
-        <p className="text-slate-700">まだコミュニティへの参加申請が完了していません。まずはコードを入力して申請を行ってください。</p>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild size="lg">
-            <Link href="/community/join">コミュニティ申請画面へ</Link>
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            className="rounded-full bg-slate-900 px-6 py-3 text-white hover:bg-slate-800"
-            disabled={!lastJoin?.communityCode || reapplyMutation.isPending}
-            onClick={() => reapplyMutation.mutate()}
-          >
-            {reapplyMutation.isPending ? '再申請中...' : lastJoin?.communityCode ? '前回のコードで再申請' : 'コード未保存'}
-          </Button>
-        </div>
-        {!lastJoin?.communityCode ? <p className="text-xs text-slate-500">一度コミュニティ申請画面でコードを入力すると再申請ボタンが有効になります。</p> : null}
-      </Card>
-    );
-  }
 
   const isRelationshipView = !isAdminUser;
   const isListLoading = isRelationshipView ? relationshipsPending : membersPending;

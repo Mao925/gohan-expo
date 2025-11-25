@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, Clock3, Loader2, ShieldCheck, Users, UserRound } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { FavoriteMealsList } from '@/components/favorite-meals-list';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useGroupMeals, useGroupMealCandidates, useInviteGroupMealCandidates } from '@/hooks/use-group-meals';
 import { ApiError, GroupMeal } from '@/lib/api';
@@ -32,7 +33,25 @@ const statusMeta: Record<GroupMeal['status'], { label: string; className: string
 };
 
 export default function GroupMealDetailPage({ params }: { params: { id: string } }) {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
+
+  if (!token) {
+    return (
+      <Card>
+        <p className="text-slate-700">ログインすると箱の詳細を確認できます。</p>
+      </Card>
+    );
+  }
+
+  return (
+    <CommunityGate>
+      <GroupMealDetailContent params={params} />
+    </CommunityGate>
+  );
+}
+
+function GroupMealDetailContent({ params }: { params: { id: string } }) {
+  const { user } = useAuth();
   const router = useRouter();
   const [actionError, setActionError] = useState<string | null>(null);
   const { data: groupMeals, isPending, error: groupMealsError } = useGroupMeals();
@@ -65,14 +84,6 @@ export default function GroupMealDetailPage({ params }: { params: { id: string }
       prev.filter((id) => candidatesData.candidates.some((candidate) => candidate.userId === id))
     );
   }, [candidatesData]);
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">ログインすると箱の詳細を確認できます。</p>
-      </Card>
-    );
-  }
 
   if (isPending) {
     return (
