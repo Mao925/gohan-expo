@@ -17,7 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ErrorBanner } from '@/components/error-banner';
 import { useAuth } from '@/context/auth-context';
-import { useCreateGroupMeal, useDeleteGroupMeal, useGroupMeals, useJoinGroupMeal, useRespondGroupMeal } from '@/hooks/use-group-meals';
+import { useCreateGroupMeal, useDeleteGroupMeal, useGroupMeals, useJoinGroupMeal, useLeaveGroupMeal, useRespondGroupMeal } from '@/hooks/use-group-meals';
 import { ApiError, GroupMeal, TimeSlot } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
@@ -127,9 +127,11 @@ function GroupMealCard({
   const respondMutation = useRespondGroupMeal(meal.id);
   const joinMutation = useJoinGroupMeal(meal.id);
   const deleteMutation = useDeleteGroupMeal(meal.id);
+  const leaveMutation = useLeaveGroupMeal(meal.id);
   const isHost = meal.host.userId === currentUserId;
   const canDelete = isHost || currentUserIsAdmin;
   const myStatus = meal.myStatus ?? 'NONE';
+  const canLeave = myStatus === 'JOINED' && !isHost;
 
   const handleRespond = (action: 'ACCEPT' | 'DECLINE') => {
     onActionError?.(null);
@@ -154,6 +156,16 @@ function GroupMealCard({
       onError: (err: any) => {
         onActionError?.((err as ApiError | undefined)?.message ?? '削除に失敗しました');
       }
+    });
+  };
+
+  const handleLeave = () => {
+    onActionError?.(null);
+    if (!window.confirm('この箱から抜けますか？\n参加枠が空き、他のメンバーが参加できるようになります。')) {
+      return;
+    }
+    leaveMutation.mutate(undefined, {
+      onError: (err: any) => onActionError?.((err as ApiError | undefined)?.message ?? '退出に失敗しました')
     });
   };
 
@@ -239,7 +251,9 @@ function GroupMealCard({
       ) : null}
 
       <div className="mt-auto flex flex-wrap items-center gap-3">
-        {isHost ? null : myStatus === 'INVITED' ? (
+        {isHost ? (
+          <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">ホストとして参加中</span>
+        ) : myStatus === 'INVITED' ? (
           <>
             <Button size="sm" onClick={() => handleRespond('ACCEPT')} disabled={respondMutation.isPending}>
               {respondMutation.isPending ? '参加中...' : '参加する'}
@@ -249,7 +263,14 @@ function GroupMealCard({
             </Button>
           </>
         ) : myStatus === 'JOINED' ? (
-          <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">参加済み</span>
+          <>
+            <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">参加中</span>
+            {canLeave ? (
+              <Button size="sm" variant="secondary" onClick={handleLeave} disabled={leaveMutation.isPending}>
+                {leaveMutation.isPending ? '退出中...' : '抜ける'}
+              </Button>
+            ) : null}
+          </>
         ) : meal.remainingSlots > 0 && meal.status === 'OPEN' ? (
           <Button size="sm" onClick={handleJoin} disabled={joinMutation.isPending}>
             {joinMutation.isPending ? '参加中...' : '飛び入り参加'}

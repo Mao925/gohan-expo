@@ -10,6 +10,7 @@ import {
   respondGroupMeal,
   joinGroupMeal,
   deleteGroupMeal,
+  leaveGroupMeal,
   CreateGroupMealInput,
   GroupMealCandidatesResponse,
   GroupMeal
@@ -95,6 +96,21 @@ export function useJoinGroupMeal(groupMealId: string) {
     mutationFn: () => {
       if (!token) throw new Error('ログインしてください');
       return joinGroupMeal(groupMealId, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+    }
+  });
+}
+
+export function useLeaveGroupMeal(groupMealId: string) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => {
+      if (!token) throw new Error('ログインしてください');
+      return leaveGroupMeal(groupMealId, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });

@@ -164,6 +164,14 @@ export async function joinGroupMeal(groupMealId: string, token?: string | null):
   });
 }
 
+export async function leaveGroupMeal(groupMealId: string, token?: string | null): Promise<GroupMeal> {
+  return apiFetch<GroupMeal>(`/api/group-meals/${groupMealId}/leave`, {
+    method: 'POST',
+    data: {},
+    token
+  });
+}
+
 export async function deleteGroupMeal(groupMealId: string, token?: string | null): Promise<void> {
   await apiFetch<void>(`/api/group-meals/${groupMealId}`, {
     method: 'DELETE',
