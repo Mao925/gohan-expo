@@ -37,7 +37,10 @@ export default function GroupMealDetailPage({ params }: { params: { id: string }
   const [actionError, setActionError] = useState<string | null>(null);
   const { data: groupMeals, isPending, error: groupMealsError } = useGroupMeals();
 
-  const groupMeal = useMemo(() => groupMeals?.find((meal) => meal.id === params.id) ?? null, [groupMeals, params.id]);
+  const groupMeal = useMemo(
+    () => groupMeals?.find((meal) => meal.id === params.id) ?? null,
+    [groupMeals, params.id]
+  );
   const isHost = Boolean(groupMeal && user?.id === groupMeal.host.userId);
 
   const {
@@ -53,14 +56,14 @@ export default function GroupMealDetailPage({ params }: { params: { id: string }
     if (!groupMeals || isPending) return;
     if (!groupMeal) {
       router.replace('/group-meals');
-    } else if (!isHost) {
-      router.replace('/group-meals');
     }
-  }, [groupMeal, groupMeals, isHost, isPending, router]);
+  }, [groupMeal, groupMeals, isPending, router]);
 
   useEffect(() => {
     if (!candidatesData) return;
-    setSelectedUserIds((prev) => prev.filter((id) => candidatesData.candidates.some((candidate) => candidate.userId === id)));
+    setSelectedUserIds((prev) =>
+      prev.filter((id) => candidatesData.candidates.some((candidate) => candidate.userId === id))
+    );
   }, [candidatesData]);
 
   if (!token) {
@@ -103,24 +106,17 @@ export default function GroupMealDetailPage({ params }: { params: { id: string }
     );
   }
 
-  if (!isHost) {
-    return (
-      <Card className="space-y-3">
-        <p className="text-slate-700">ホストのみアクセス可能です。</p>
-        <Button asChild size="sm" variant="secondary">
-          <Link href="/group-meals">一覧に戻る</Link>
-        </Button>
-      </Card>
-    );
-  }
-
   const candidatesErrorMessage = (candidatesError as ApiError | undefined)?.message ?? null;
 
-  const joinedParticipants = groupMeal.participants.filter((participant) => participant.status === 'JOINED' || participant.isHost);
+  const joinedParticipants = groupMeal.participants.filter(
+    (participant) => participant.status === 'JOINED' || participant.isHost
+  );
 
   const handleToggle = (userId: string) => {
     setActionError(null);
-    setSelectedUserIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
   };
 
   const handleInvite = () => {
@@ -142,9 +138,16 @@ export default function GroupMealDetailPage({ params }: { params: { id: string }
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Group Meal</p>
-          <h1 className="text-3xl font-semibold text-slate-900">{groupMeal.title?.trim() || 'タイトルなし'}</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">
+            {groupMeal.title?.trim() || 'タイトルなし'}
+          </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-            <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', statusMeta[groupMeal.status]?.className)}>
+            <span
+              className={cn(
+                'inline-flex rounded-full px-3 py-1 text-xs font-semibold',
+                statusMeta[groupMeal.status]?.className
+              )}
+            >
               {statusMeta[groupMeal.status]?.label ?? groupMeal.status}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1 font-semibold text-slate-800">
@@ -202,12 +205,19 @@ export default function GroupMealDetailPage({ params }: { params: { id: string }
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {joinedParticipants.map((participant) => (
-              <div key={participant.userId} className="rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 shadow-sm">
+              <div
+                key={participant.userId}
+                className="rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 shadow-sm"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900">{participant.name}</span>
+                    <span className="text-sm font-semibold text-slate-900">
+                      {participant.name}
+                    </span>
                     {participant.isHost ? (
-                      <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-semibold text-orange-700">ホスト</span>
+                      <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-semibold text-orange-700">
+                        ホスト
+                      </span>
                     ) : null}
                   </div>
                   <span className="text-xs font-semibold text-emerald-700">参加中</span>
@@ -219,60 +229,62 @@ export default function GroupMealDetailPage({ params }: { params: { id: string }
         )}
       </Card>
 
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">招待候補</h2>
-          <span className="text-sm text-slate-500">{candidatesData?.candidates.length ?? 0} 名</span>
-        </div>
-        {candidatesPending ? (
-          <p className="text-sm text-slate-600">候補を読み込み中...</p>
-        ) : !candidatesData || candidatesData.candidates.length === 0 ? (
-          <p className="text-sm text-slate-600">招待可能なメンバーがいません。</p>
-        ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {candidatesData.candidates.map((candidate) => {
-                const checked = selectedUserIds.includes(candidate.userId);
-                return (
-                  <label
-                    key={candidate.userId}
-                    className={cn(
-                      'flex cursor-pointer flex-col gap-2 rounded-2xl border bg-white px-4 py-3 shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60',
-                      checked ? 'border-orange-300 ring-2 ring-orange-200' : 'border-orange-100'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-brand"
-                        checked={checked}
-                        onChange={() => handleToggle(candidate.userId)}
-                      />
-                      <span className="text-sm font-semibold text-slate-900">{candidate.name}</span>
-                    </div>
-                    <FavoriteMealsList meals={candidate.favoriteMeals} className="ml-6" />
-                  </label>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <Button variant="secondary" size="sm" onClick={() => setSelectedUserIds([])} disabled={inviteMutation.isPending}>
-                クリア
-              </Button>
-              <Button onClick={handleInvite} disabled={inviteMutation.isPending || selectedUserIds.length === 0}>
-                {inviteMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    招待中...
-                  </>
-                ) : (
-                  `選択したメンバーを招待 (${selectedUserIds.length})`
-                )}
-              </Button>
-            </div>
-          </>
-        )}
-      </Card>
+      {isHost ? (
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">招待候補</h2>
+            <span className="text-sm text-slate-500">{candidatesData?.candidates.length ?? 0} 名</span>
+          </div>
+          {candidatesPending ? (
+            <p className="text-sm text-slate-600">候補を読み込み中...</p>
+          ) : !candidatesData || candidatesData.candidates.length === 0 ? (
+            <p className="text-sm text-slate-600">招待可能なメンバーがいません。</p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {candidatesData.candidates.map((candidate) => {
+                  const checked = selectedUserIds.includes(candidate.userId);
+                  return (
+                    <label
+                      key={candidate.userId}
+                      className={cn(
+                        'flex cursor-pointer flex-col gap-2 rounded-2xl border bg-white px-4 py-3 shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60',
+                        checked ? 'border-orange-300 ring-2 ring-orange-200' : 'border-orange-100'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-brand"
+                          checked={checked}
+                          onChange={() => handleToggle(candidate.userId)}
+                        />
+                        <span className="text-sm font-semibold text-slate-900">{candidate.name}</span>
+                      </div>
+                      <FavoriteMealsList meals={candidate.favoriteMeals} className="ml-6" />
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <Button variant="secondary" size="sm" onClick={() => setSelectedUserIds([])} disabled={inviteMutation.isPending}>
+                  クリア
+                </Button>
+                <Button onClick={handleInvite} disabled={inviteMutation.isPending || selectedUserIds.length === 0}>
+                  {inviteMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      招待中...
+                    </>
+                  ) : (
+                    `選択したメンバーを招待 (${selectedUserIds.length})`
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </Card>
+      ) : null}
     </div>
   );
 }
