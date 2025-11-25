@@ -49,17 +49,6 @@ export default function CommunityJoinPage() {
     defaultValues: { communityName: '', communityCode: '' }
   });
 
-  // 未ログイン時はフォームを出さずログイン導線のみを表示する
-  if (!token) {
-    return (
-      <CommunityNoticeCard
-        title="コミュニティに参加するにはログインが必要です"
-        description="先にアカウントを作成するか、ログインしてください。"
-        action={{ label: 'ログインへ', href: '/login' }}
-      />
-    );
-  }
-
   const {
     data: statusData,
     isLoading: statusLoading,
@@ -90,11 +79,14 @@ export default function CommunityJoinPage() {
     }
   });
 
+  // 未ログイン時はフォームを出さずログイン導線のみを表示する
   if (!token) {
     return (
-      <Card>
-        <p className="text-slate-700">まずはログインしてください。</p>
-      </Card>
+      <CommunityNoticeCard
+        title="コミュニティに参加するにはログインが必要です"
+        description="先にアカウントを作成するか、ログインしてください。"
+        action={{ label: 'ログインへ', href: '/login' }}
+      />
     );
   }
 
