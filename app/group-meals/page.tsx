@@ -199,7 +199,7 @@ function GroupMealCard({
           {canDelete ? (
             <Button
               size="sm"
-              variant="destructive"
+              variant="secondary"
               className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
