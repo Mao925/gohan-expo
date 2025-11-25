@@ -197,7 +197,7 @@ export default function LikePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-4xl md:max-w-5xl space-y-6 md:space-y-8">
       <ErrorBanner
         message={(() => {
           const invalid = (msg?: string | null) =>
@@ -209,11 +209,11 @@ export default function LikePage() {
         })()}
       />
       {statusLoading ? (
-        <Card>
+        <Card className="p-5 md:p-6">
           <p className="text-slate-500">ステータス確認中...</p>
         </Card>
       ) : !isApproved ? (
-        <Card className="space-y-4 border border-orange-100 bg-orange-50 p-6">
+        <Card className="space-y-4 border border-orange-100 bg-orange-50 p-5 md:p-6">
           {statusValue === "UNAPPLIED" ? (
             <>
               <p className="text-slate-700">
@@ -246,8 +246,8 @@ export default function LikePage() {
             </p>
           )}
         </Card>
-) : isPending ? (
-        <Card className="space-y-3">
+      ) : isPending ? (
+        <Card className="space-y-3 p-5 md:p-6">
           <p className="text-slate-500">読み込み中...</p>
           <Button
             type="button"
@@ -259,20 +259,20 @@ export default function LikePage() {
           </Button>
         </Card>
       ) : candidate ? (
-        <div className="flex flex-col gap-6">
-          <Card className="text-center">
+        <Card className="space-y-6 p-5 md:p-7">
+          <div className="flex flex-col gap-2 text-center">
             <p className="text-sm uppercase tracking-[0.5em] text-slate-400">
               M E M B E R
             </p>
-            <h2 className="mt-4 text-3xl font-semibold text-slate-900">
+            <h2 className="text-3xl font-semibold text-slate-900">
               {candidate.name}
             </h2>
-            <div className="mt-4 space-y-2 text-left">
-              <p className="text-sm font-semibold text-slate-700">好きなご飯</p>
-              <FavoriteMealsList meals={candidate.favoriteMeals} />
-            </div>
-          </Card>
-          <div className="grid gap-4 sm:grid-cols-2">
+          </div>
+          <div className="space-y-3 text-left">
+            <p className="text-sm font-semibold text-slate-700">好きなご飯</p>
+            <FavoriteMealsList meals={candidate.favoriteMeals} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
             <Button
               type="button"
               variant="secondary"
@@ -293,9 +293,9 @@ export default function LikePage() {
               YES / 行きたい！
             </Button>
           </div>
-        </div>
+        </Card>
       ) : (
-        <Card className="space-y-3">
+        <Card className="space-y-3 p-5 md:p-6">
           <p className="text-slate-500">
             今は表示できるメンバーがいません。シードデータが投入済みか確認し、必要なら管理者に連絡してください。
           </p>

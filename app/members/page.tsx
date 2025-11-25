@@ -318,7 +318,7 @@ export default function MembersPage() {
     membersData?.find((member) => member.isSelf)?.favoriteMeals ?? profileData?.favoriteMeals ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 md:space-y-8">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-semibold text-slate-900">承認済みメンバー</h1>
@@ -448,7 +448,7 @@ export default function MembersPage() {
           />
         </div>
       ) : membersData && membersData.length > 0 ? (
-        <div className="grid gap-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {membersData.map((member) => {
             const removableProps =
               isAdminUser && !member.isSelf
@@ -487,7 +487,7 @@ function RelationshipSection({ title, description, emptyMessage, members, highli
         <p className="text-sm text-slate-500">{description}</p>
       </div>
       {members.length > 0 ? (
-        <div className="grid gap-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {members.map((member, index) => {
             if (!member) return null;
             const identifier = member.id ?? member.targetUserId;
