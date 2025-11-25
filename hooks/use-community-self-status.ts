@@ -26,6 +26,6 @@ export function useCommunitySelfStatus(enabled = true) {
     queryFn: () => apiFetch('/api/community/self-status', { method: 'GET', token }),
     enabled: Boolean(enabled && token),
     refetchOnWindowFocus: true,
-    refetchInterval: (data) => (data?.phase === 'PENDING' ? 10000 : false)
+    refetchInterval: (query) => (query.state.data?.phase === 'PENDING' ? 10000 : false)
   });
 }
