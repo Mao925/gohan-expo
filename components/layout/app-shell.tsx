@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
+import { useCommunitySelfStatus } from "@/hooks/use-community-self-status";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -22,14 +23,18 @@ type NavItem = {
   icon?: ComponentType<{ className?: string }>;
 };
 
-const BASE_NAV_ITEMS: NavItem[] = [
+const COMMON_NAV_ITEMS: NavItem[] = [
   { href: "/members", label: "メンバー", icon: Users },
   { href: "/match/like", label: "ご飯に行きたい", icon: HeartHandshake },
   { href: "/availability", label: "日程調整", icon: CalendarDays },
   { href: "/group-meals", label: "みんなでGO飯", icon: UtensilsCrossed },
-  { href: "/community/join", label: "コミュニティ申請", icon: Megaphone },
   { href: "/profile", label: "プロフィール", icon: UserRound },
 ];
+const COMMUNITY_NAV_ITEM: NavItem = {
+  href: "/community/join",
+  label: "コミュニティ申請",
+  icon: Megaphone,
+};
 
 type AppShellProps = {
   children: ReactNode;
@@ -38,13 +43,18 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const { user, logout, isLoading } = useAuth();
+  const { data: communityStatus } = useCommunitySelfStatus(Boolean(user));
 
-  const navItems: NavItem[] = user?.isAdmin
+  const isAdmin = Boolean(user?.isAdmin || communityStatus?.isAdmin);
+
+  const navItems: NavItem[] = isAdmin
     ? [
-        ...BASE_NAV_ITEMS.filter((item) => item.href !== "/availability"),
+        // 管理者だけコミュニティ管理や承認タブを見せる
+        ...COMMON_NAV_ITEMS.filter((item) => item.href !== "/availability"),
+        COMMUNITY_NAV_ITEM,
         { href: "/admin", label: "承認待ち", icon: ShieldCheck },
       ]
-    : BASE_NAV_ITEMS;
+    : COMMON_NAV_ITEMS;
 
   const mobileNavItems: NavItem[] = navItems;
 

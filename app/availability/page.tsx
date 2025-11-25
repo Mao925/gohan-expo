@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Card } from '@/components/ui/card';
+import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
+import { Card } from '@/components/ui/card';
 import { apiFetch, ApiError } from '@/lib/api';
-import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, TimeSlot, Weekday } from '@/lib/types';
 import { createDefaultGrid, gridToSlots, slotsToGrid, TIMESLOTS, WEEKDAYS } from '@/lib/availability';
 import { useAuth } from '@/context/auth-context';
+import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, TimeSlot, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type AvailabilityToggleProps = {
@@ -56,6 +57,24 @@ function AvailabilityToggle({ value, onChange, disabled }: AvailabilityTogglePro
 }
 
 export default function AvailabilityPage() {
+  const { token } = useAuth();
+
+  if (!token) {
+    return (
+      <Card>
+        <p className="text-slate-700">ログインすると日程調整を登録できます。</p>
+      </Card>
+    );
+  }
+
+  return (
+    <CommunityGate>
+      <AvailabilityContent />
+    </CommunityGate>
+  );
+}
+
+function AvailabilityContent() {
   const { token, user } = useAuth();
   const [grid, setGrid] = useState<AvailabilityGrid>(createDefaultGrid());
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -132,14 +151,6 @@ export default function AvailabilityPage() {
     // Send the full 14-slot payload to align with backend expectations.
     mutation.mutate(gridToSlots(nextGrid));
   };
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">ログインすると日程調整を登録できます。</p>
-      </Card>
-    );
-  }
 
   if (user?.isAdmin) {
     return (

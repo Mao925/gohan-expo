@@ -5,16 +5,17 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { CommunityGate } from '@/components/community/community-gate';
+import { FavoriteMealsList } from '@/components/favorite-meals-list';
+import { ErrorBanner } from '@/components/error-banner';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Field } from '@/components/forms/field';
-import { ErrorBanner } from '@/components/error-banner';
-import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/context/auth-context';
-import { Profile } from '@/lib/types';
+import { apiFetch } from '@/lib/api';
 import { FAVORITE_MEAL_OPTIONS } from '@/lib/favorite-meal-options';
-import { FavoriteMealsList } from '@/components/favorite-meals-list';
+import { Profile } from '@/lib/types';
 
 const schema = z.object({
   name: z.string().min(2, '2文字以上で入力してください'),
@@ -24,6 +25,24 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function ProfilePage() {
+  const { token } = useAuth();
+
+  if (!token) {
+    return (
+      <Card>
+        <p className="text-slate-700">まずはログインしてください。</p>
+      </Card>
+    );
+  }
+
+  return (
+    <CommunityGate>
+      <ProfileContent />
+    </CommunityGate>
+  );
+}
+
+function ProfileContent() {
   const { token } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const form = useForm<FormValues>({
@@ -59,14 +78,6 @@ export default function ProfilePage() {
         token
       })
   });
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">まずはログインしてください。</p>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-6">
