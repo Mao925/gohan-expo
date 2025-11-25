@@ -17,7 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ErrorBanner } from '@/components/error-banner';
 import { useAuth } from '@/context/auth-context';
-import { useCreateGroupMeal, useGroupMeals, useJoinGroupMeal, useRespondGroupMeal } from '@/hooks/use-group-meals';
+import { useCreateGroupMeal, useDeleteGroupMeal, useGroupMeals, useJoinGroupMeal, useRespondGroupMeal } from '@/hooks/use-group-meals';
 import { ApiError, GroupMeal, TimeSlot } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
@@ -99,7 +99,13 @@ export default function GroupMealsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {groupMeals.map((meal) => (
-            <GroupMealCard key={meal.id} meal={meal} currentUserId={user?.id} onActionError={setActionError} />
+            <GroupMealCard
+              key={meal.id}
+              meal={meal}
+              currentUserId={user?.id}
+              currentUserIsAdmin={user?.isAdmin ?? false}
+              onActionError={setActionError}
+            />
           ))}
         </div>
       )}
@@ -110,15 +116,19 @@ export default function GroupMealsPage() {
 function GroupMealCard({
   meal,
   currentUserId,
+  currentUserIsAdmin,
   onActionError
 }: {
   meal: GroupMeal;
   currentUserId?: string;
+  currentUserIsAdmin?: boolean;
   onActionError?: (message: string | null) => void;
 }) {
   const respondMutation = useRespondGroupMeal(meal.id);
   const joinMutation = useJoinGroupMeal(meal.id);
+  const deleteMutation = useDeleteGroupMeal(meal.id);
   const isHost = meal.host.userId === currentUserId;
+  const canDelete = isHost || currentUserIsAdmin;
   const myStatus = meal.myStatus ?? 'NONE';
 
   const handleRespond = (action: 'ACCEPT' | 'DECLINE') => {
@@ -132,6 +142,18 @@ function GroupMealCard({
     onActionError?.(null);
     joinMutation.mutate(undefined, {
       onError: (err: any) => onActionError?.((err as ApiError | undefined)?.message ?? '参加に失敗しました')
+    });
+  };
+
+  const handleDelete = () => {
+    onActionError?.(null);
+    if (!window.confirm('この箱を削除しますか？\n参加メンバーの情報も含めて元に戻せません。')) {
+      return;
+    }
+    deleteMutation.mutate(undefined, {
+      onError: (err: any) => {
+        onActionError?.((err as ApiError | undefined)?.message ?? '削除に失敗しました');
+      }
     });
   };
 
@@ -168,11 +190,24 @@ function GroupMealCard({
             </span>
           </p>
         </div>
-        {isHost ? (
-          <Button asChild size="sm" variant="secondary">
-            <Link href={`/group-meals/${meal.id}`}>詳細・招待</Link>
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {isHost ? (
+            <Button asChild size="sm" variant="secondary">
+              <Link href={`/group-meals/${meal.id}`}>詳細・招待</Link>
+            </Button>
+          ) : null}
+          {canDelete ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? '削除中...' : '削除'}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
