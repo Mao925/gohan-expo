@@ -191,11 +191,9 @@ function GroupMealCard({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isHost ? (
-            <Button asChild size="sm" variant="secondary">
-              <Link href={`/group-meals/${meal.id}`}>詳細・招待</Link>
-            </Button>
-          ) : null}
+          <Button asChild size="sm" variant="secondary">
+            <Link href={`/group-meals/${meal.id}`}>詳細・招待</Link>
+          </Button>
           {canDelete ? (
             <Button
               size="sm"
