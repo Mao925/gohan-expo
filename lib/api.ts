@@ -73,4 +73,95 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   return (await response.json()) as T;
 }
 
+export type GroupMealStatus = 'OPEN' | 'FULL' | 'CLOSED';
+export type GroupMealParticipantStatus = 'INVITED' | 'JOINED' | 'DECLINED' | 'CANCELLED';
+export type Weekday = 'SUN' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT';
+export type TimeSlot = 'DAY' | 'NIGHT';
+
+export type GroupMealParticipant = {
+  userId: string;
+  isHost: boolean;
+  status: GroupMealParticipantStatus;
+  name: string;
+  favoriteMeals: string[];
+};
+
+export type GroupMeal = {
+  id: string;
+  title: string | null;
+  date: string;
+  weekday: Weekday;
+  timeSlot: TimeSlot;
+  capacity: number;
+  status: GroupMealStatus;
+  host: {
+    userId: string;
+    name: string;
+  };
+  joinedCount: number;
+  remainingSlots: number;
+  myStatus?: 'JOINED' | 'INVITED' | 'NONE';
+  participants: GroupMealParticipant[];
+};
+
+export type GroupMealCandidate = {
+  userId: string;
+  name: string;
+  favoriteMeals: string[];
+};
+
+export type GroupMealCandidatesResponse = {
+  candidates: GroupMealCandidate[];
+};
+
+export type CreateGroupMealInput = {
+  title?: string;
+  date: string;
+  timeSlot: TimeSlot;
+  capacity: number;
+};
+
+export async function fetchGroupMeals(token?: string | null): Promise<GroupMeal[]> {
+  return apiFetch('/api/group-meals', { token });
+}
+
+export async function createGroupMeal(input: CreateGroupMealInput, token?: string | null): Promise<GroupMeal> {
+  return apiFetch('/api/group-meals', {
+    method: 'POST',
+    data: input,
+    token
+  });
+}
+
+export async function fetchGroupMealCandidates(
+  groupMealId: string,
+  token?: string | null
+): Promise<GroupMealCandidatesResponse> {
+  return apiFetch(`/api/group-meals/${groupMealId}/candidates`, { token });
+}
+
+export async function inviteGroupMealCandidates(groupMealId: string, userIds: string[], token?: string | null): Promise<GroupMeal> {
+  return apiFetch(`/api/group-meals/${groupMealId}/invite`, {
+    method: 'POST',
+    data: { userIds },
+    token
+  });
+}
+
+export async function respondGroupMeal(groupMealId: string, action: 'ACCEPT' | 'DECLINE', token?: string | null): Promise<GroupMeal> {
+  return apiFetch(`/api/group-meals/${groupMealId}/respond`, {
+    method: 'POST',
+    data: { action },
+    token
+  });
+}
+
+export async function joinGroupMeal(groupMealId: string, token?: string | null): Promise<GroupMeal> {
+  return apiFetch(`/api/group-meals/${groupMealId}/join`, {
+    method: 'POST',
+    data: {},
+    token
+  });
+}
+
 export { API_BASE_URL, SERVER_UNAVAILABLE_MESSAGE };

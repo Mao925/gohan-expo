@@ -10,6 +10,7 @@ const baseNavItems = [
   { href: "/members", label: "メンバー" },
   { href: "/match/like", label: "ご飯に行きたい" },
   { href: "/availability", label: "日程調整" },
+  { href: "/group-meals", label: "みんなでGO飯" },
   { href: "/community/join", label: "コミュニティ申請" },
   { href: "/profile", label: "プロフィール" },
 ];
