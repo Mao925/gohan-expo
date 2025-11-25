@@ -102,29 +102,29 @@ export default function AvailabilityPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 md:space-y-8">
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">日程調整</h1>
         <p className="mt-2 text-sm text-slate-500">曜日と昼 / 夜の組み合わせごとに空き状況を登録できます。</p>
       </div>
       <ErrorBanner message={isForbidden ? 'この機能は一般ユーザーのみ利用できます' : error} />
       {isPending && !data ? (
-        <Card>
+        <Card className="p-5 md:p-6">
           <p className="text-slate-500">読み込み中...</p>
         </Card>
       ) : isForbidden ? (
-        <Card>
+        <Card className="p-5 md:p-6">
           <p className="text-slate-700">この機能は一般ユーザーのみ利用できます。</p>
         </Card>
       ) : (
-        <Card className="space-y-4">
+        <Card className="space-y-5 p-5 md:p-6">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[360px] border-collapse text-sm text-slate-700">
+            <table className="w-full min-w-[420px] border-collapse text-sm text-slate-700 md:text-base">
               <thead>
                 <tr>
-                  <th className="w-28 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">曜日</th>
+                  <th className="w-32 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 md:text-sm">曜日</th>
                   {TIMESLOTS.map((slot) => (
-                    <th key={slot.value} className="py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <th key={slot.value} className="py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 md:text-sm">
                       {slot.label}
                     </th>
                   ))}
@@ -137,7 +137,7 @@ export default function AvailabilityPage() {
                     {TIMESLOTS.map((slot) => (
                       <td key={slot.value} className="py-2 text-center">
                         <select
-                          className="w-24 rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                          className="w-24 rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30 md:w-28"
                           value={grid[weekday.value]?.[slot.value] ?? 'UNAVAILABLE'}
                           onChange={(event) =>
                             handleChange(weekday.value, slot.value, event.target.value as AvailabilityStatus)

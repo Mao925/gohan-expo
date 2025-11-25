@@ -73,45 +73,45 @@ export default function CommunityJoinPage() {
   const showCommunityName = badgeStatus === 'APPROVED' && statusData?.communityName;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-4xl md:max-w-5xl space-y-6 md:space-y-8">
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">コミュニティ参加</h1>
         <p className="mt-2 text-sm text-slate-500">管理者から共有されたコードで参加申請してください。</p>
       </div>
-      <Card>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-slate-500">現在のステータス</p>
-            {showCommunityName ? (
-              <p className="text-xl font-semibold text-slate-900">{statusData!.communityName}</p>
-            ) : (
-              <p className="text-base text-slate-400">承認済みになるとコミュニティ名が表示されます</p>
-            )}
-          </div>
+      <Card className="space-y-6 p-5 md:grid md:grid-cols-[1.1fr,1.4fr] md:items-start md:gap-6 md:space-y-0 md:p-6">
+        <div className="space-y-3">
+          <p className="text-sm text-slate-500">現在のステータス</p>
+          {showCommunityName ? (
+            <p className="text-xl font-semibold text-slate-900">{statusData!.communityName}</p>
+          ) : (
+            <p className="text-base text-slate-400">承認済みになるとコミュニティ名が表示されます</p>
+          )}
           <StatusPill status={badgeStatus} />
         </div>
-        <ErrorBanner message={combinedError} />
-        <form
-          className="mt-6 space-y-5"
-          onSubmit={form.handleSubmit(async (values) => {
-            setError(null);
-            try {
-              await joinMutation.mutateAsync(values);
-            } catch (err: any) {
-              setError(err?.message ?? '申請に失敗しました');
-            }
-          })}
-        >
-          <Field label="コミュニティ名" error={form.formState.errors.communityName?.message}>
-            <Input placeholder="KING" {...form.register('communityName')} />
-          </Field>
-          <Field label="8桁のコミュニティコード" error={form.formState.errors.communityCode?.message}>
-            <Input placeholder="ABCD1234" maxLength={8} {...form.register('communityCode')} />
-          </Field>
-          <Button type="submit" disabled={joinMutation.isPending || isFetching} className="w-full">
-            {joinMutation.isPending ? '送信中...' : badgeStatus === 'UNAPPLIED' ? '参加申請する' : '再申請する'}
-          </Button>
-        </form>
+        <div className="space-y-5">
+          <ErrorBanner message={combinedError} />
+          <form
+            className="space-y-5"
+            onSubmit={form.handleSubmit(async (values) => {
+              setError(null);
+              try {
+                await joinMutation.mutateAsync(values);
+              } catch (err: any) {
+                setError(err?.message ?? '申請に失敗しました');
+              }
+            })}
+          >
+            <Field label="コミュニティ名" error={form.formState.errors.communityName?.message}>
+              <Input placeholder="KING" {...form.register('communityName')} />
+            </Field>
+            <Field label="8桁のコミュニティコード" error={form.formState.errors.communityCode?.message}>
+              <Input placeholder="ABCD1234" maxLength={8} {...form.register('communityCode')} />
+            </Field>
+            <Button type="submit" disabled={joinMutation.isPending || isFetching} className="w-full">
+              {joinMutation.isPending ? '送信中...' : badgeStatus === 'UNAPPLIED' ? '参加申請する' : '再申請する'}
+            </Button>
+          </form>
+        </div>
       </Card>
     </div>
   );
