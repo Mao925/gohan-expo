@@ -27,16 +27,6 @@ type OverlapState = {
 };
 
 export default function MembersPage() {
-  const { token } = useAuth();
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">会員限定のページです。まずはログインしてください。</p>
-      </Card>
-    );
-  }
-
   return (
     <CommunityGate>
       <MembersContent />
