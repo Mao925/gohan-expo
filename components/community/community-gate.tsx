@@ -6,6 +6,7 @@ import { useCommunitySelfStatus } from '@/hooks/use-community-self-status';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useAuth } from '@/context/auth-context';
 
 type CommunityGateProps = {
   children: ReactNode;
@@ -13,9 +14,20 @@ type CommunityGateProps = {
 
 // Centralized guard that shows a unified card for NO_COMMUNITY / PENDING users.
 export function CommunityGate({ children }: CommunityGateProps) {
-  const { data, isLoading, isFetching, error, refetch } = useCommunitySelfStatus();
+  const { token } = useAuth();
+  const { data, isLoading, isFetching, error, refetch } = useCommunitySelfStatus(Boolean(token));
 
   const apiError = error as ApiError | undefined;
+
+  if (!token) {
+    return (
+      <CommunityNoticeCard
+        title="ログインが必要です"
+        description="この機能を利用するには、まずログインしてください。"
+        action={{ label: 'ログインへ', href: '/login' }}
+      />
+    );
+  }
 
   if (isLoading) {
     return (

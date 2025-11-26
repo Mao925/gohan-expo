@@ -25,16 +25,6 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function ProfilePage() {
-  const { token } = useAuth();
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">まずはログインしてください。</p>
-      </Card>
-    );
-  }
-
   return (
     <CommunityGate>
       <ProfileContent />

@@ -13,16 +13,6 @@ import { DEV_RESET_LIKE_ENDPOINT, triggerDevResetLikes } from "@/lib/dev-tools";
 import { MatchCandidate } from "@/lib/types";
 
 export default function LikePage() {
-  const { token } = useAuth();
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">ログインするとメンバーが表示されます。</p>
-      </Card>
-    );
-  }
-
   return (
     <CommunityGate>
       <LikeContent />

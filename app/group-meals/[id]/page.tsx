@@ -33,16 +33,6 @@ const statusMeta: Record<GroupMeal['status'], { label: string; className: string
 };
 
 export default function GroupMealDetailPage({ params }: { params: { id: string } }) {
-  const { token } = useAuth();
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">ログインすると箱の詳細を確認できます。</p>
-      </Card>
-    );
-  }
-
   return (
     <CommunityGate>
       <GroupMealDetailContent params={params} />

@@ -61,16 +61,6 @@ function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
 }
 
 export default function GroupMealsPage() {
-  const { token } = useAuth();
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">ログインすると「みんなでGO飯」を利用できます。</p>
-      </Card>
-    );
-  }
-
   return (
     <CommunityGate>
       <GroupMealsContent />

@@ -39,7 +39,7 @@ export default function RegisterPage() {
     setError(null);
     try {
       await registerUser(values);
-      router.push('/community/join');
+      router.push('/onboarding');
     } catch (err: any) {
       const apiError = err as ApiError | undefined;
       if (apiError?.isServerError) {

@@ -57,16 +57,6 @@ function AvailabilityToggle({ value, onChange, disabled }: AvailabilityTogglePro
 }
 
 export default function AvailabilityPage() {
-  const { token } = useAuth();
-
-  if (!token) {
-    return (
-      <Card>
-        <p className="text-slate-700">ログインすると日程調整を登録できます。</p>
-      </Card>
-    );
-  }
-
   return (
     <CommunityGate>
       <AvailabilityContent />
