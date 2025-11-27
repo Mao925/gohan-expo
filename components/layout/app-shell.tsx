@@ -71,7 +71,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#fffaf3] text-slate-900">
-      <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/90 backdrop-blur">
+      <header className="app-chrome-top sticky top-0 z-20 border-b border-orange-100 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between px-4">
           <Link
             href="/"
@@ -128,7 +128,7 @@ export function AppShell({ children }: AppShellProps) {
         {children}
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur md:hidden">
+      <nav className="app-chrome-bottom fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-2">
           {mobileNavItems.map(({ href, label, icon: Icon }) => (
             <Link
