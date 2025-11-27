@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
@@ -11,48 +11,47 @@ import { useAuth } from '@/context/auth-context';
 import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, TimeSlot, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-type AvailabilityToggleProps = {
+const makeToday = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
+const addDays = (date: Date, offset: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + offset);
+
+const DAY_INDEX_TO_WEEKDAY: Weekday[] = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+type DisplayDay = {
+  date: Date;
+  weekday: Weekday;
+  dayLabel: string;
+  weekdayLabel: string;
+};
+
+type AvailabilitySlotButtonProps = {
   value: AvailabilityStatus;
-  onChange: (next: AvailabilityStatus) => void;
+  onToggle: () => void;
   disabled?: boolean;
 };
 
-function AvailabilityToggle({ value, onChange, disabled }: AvailabilityToggleProps) {
+function AvailabilitySlotButton({ value, onToggle, disabled }: AvailabilitySlotButtonProps) {
   const isAvailable = value === 'AVAILABLE';
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      <button
-        type="button"
-        onClick={() => onChange('AVAILABLE')}
-        disabled={disabled}
-        className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition',
-          isAvailable
-            ? 'border-brand bg-brand text-white shadow-sm'
-            : 'border-slate-200 bg-white text-slate-500 hover:border-brand/40 hover:bg-brand/5',
-          disabled && 'cursor-not-allowed opacity-70'
-        )}
-        aria-pressed={isAvailable}
-      >
-        ○
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('UNAVAILABLE')}
-        disabled={disabled}
-        className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition',
-          !isAvailable
-            ? 'border-brand bg-brand text-white shadow-sm'
-            : 'border-slate-200 bg-white text-slate-500 hover:border-brand/40 hover:bg-brand/5',
-          disabled && 'cursor-not-allowed opacity-70'
-        )}
-        aria-pressed={!isAvailable}
-      >
-        ×
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      className={cn(
+        'flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition',
+        isAvailable
+          ? 'border-brand bg-brand text-white shadow-sm'
+          : 'border-orange-100 bg-white text-slate-400 hover:border-brand/40 hover:bg-brand/5',
+        disabled && 'cursor-not-allowed opacity-70'
+      )}
+      aria-pressed={isAvailable}
+    >
+      {isAvailable ? '◯' : '×'}
+    </button>
   );
 }
 
@@ -67,6 +66,7 @@ export default function AvailabilityPage() {
 function AvailabilityContent() {
   const { token, user } = useAuth();
   const [grid, setGrid] = useState<AvailabilityGrid>(createDefaultGrid());
+  const [today, setToday] = useState<Date>(makeToday);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isForbidden, setIsForbidden] = useState(false);
@@ -126,14 +126,40 @@ function AvailabilityContent() {
     }
   });
 
-  const handleToggle = (weekday: Weekday, timeSlot: TimeSlot, status: AvailabilityStatus) => {
-    if (grid[weekday]?.[timeSlot] === status) return;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const next = makeToday();
+      setToday((prev) => (prev.toDateString() === next.toDateString() ? prev : next));
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const displayDays = useMemo<DisplayDay[]>(() => {
+    const days: DisplayDay[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(today, i);
+      const weekday = DAY_INDEX_TO_WEEKDAY[date.getDay()];
+      const weekdayLabel = WEEKDAYS.find((w) => w.value === weekday)?.label ?? '';
+      days.push({
+        date,
+        weekday,
+        dayLabel: String(date.getDate()),
+        weekdayLabel
+      });
+    }
+    return days;
+  }, [today]);
+
+  const handleToggle = (weekday: Weekday, timeSlot: TimeSlot) => {
+    const current = grid[weekday]?.[timeSlot] ?? 'UNAVAILABLE';
+    const nextStatus: AvailabilityStatus = current === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
 
     const nextGrid: AvailabilityGrid = {
       ...grid,
       [weekday]: {
         ...grid[weekday],
-        [timeSlot]: status
+        [timeSlot]: nextStatus
       }
     };
 
@@ -167,43 +193,51 @@ function AvailabilityContent() {
         </Card>
       ) : (
         <Card className="space-y-5 p-5 md:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-600">セルを切り替えると自動で保存されます。</p>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">今週の予定</h2>
+              <p className="text-xs text-slate-500">今日から7日間の昼／夜の予定を登録できます。セルを切り替えると自動で保存されます。</p>
+            </div>
             {mutation.isPending ? (
               <p className="text-sm font-semibold text-slate-600">保存中...</p>
             ) : successMessage ? (
               <p className="text-sm font-semibold text-emerald-600">{successMessage}</p>
             ) : null}
           </div>
+
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px] border-collapse text-sm text-slate-700 md:text-base">
-              <thead>
-                <tr>
-                  <th className="w-32 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 md:text-sm">曜日</th>
-                  {TIMESLOTS.map((slot) => (
-                    <th key={slot.value} className="py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 md:text-sm">
-                      {slot.label}
-                    </th>
+            <div className="min-w-[560px] space-y-4">
+              <div className="grid grid-cols-[64px_1fr] gap-3 text-center text-sm text-slate-600">
+                <div />
+                <div className="grid grid-cols-7 gap-3">
+                  {displayDays.map((d) => (
+                    <div key={d.date.toISOString()} className="space-y-1">
+                      <div className="text-base font-semibold text-slate-900">{d.dayLabel}</div>
+                      <div className="text-xs text-slate-500">{d.weekdayLabel}</div>
+                    </div>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {WEEKDAYS.map((weekday) => (
-                  <tr key={weekday.value} className="border-t border-orange-100">
-                    <th className="py-3 text-left text-base font-semibold text-slate-900">{weekday.label}</th>
-                    {TIMESLOTS.map((slot) => (
-                      <td key={slot.value} className="py-2 text-center">
-                        <AvailabilityToggle
-                          value={grid[weekday.value]?.[slot.value] ?? 'UNAVAILABLE'}
-                          onChange={(next) => handleToggle(weekday.value, slot.value, next)}
-                          disabled={mutation.isPending}
-                        />
-                      </td>
-                    ))}
-                  </tr>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {TIMESLOTS.map((slot) => (
+                  <div key={slot.value} className="grid grid-cols-[64px_1fr] items-center gap-3">
+                    <div className="text-right text-sm font-semibold text-slate-600">{slot.label}</div>
+                    <div className="grid grid-cols-7 gap-3">
+                      {displayDays.map((d) => (
+                        <div key={`${d.weekday}-${slot.value}`} className="flex items-center justify-center">
+                          <AvailabilitySlotButton
+                            value={grid[d.weekday]?.[slot.value] ?? 'UNAVAILABLE'}
+                            onToggle={() => handleToggle(d.weekday, slot.value)}
+                            disabled={mutation.isPending}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         </Card>
       )}
