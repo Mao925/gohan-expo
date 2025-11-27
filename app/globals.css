@@ -4,17 +4,31 @@
 
 :root {
   color-scheme: light;
+  --bg-soft: #fdf8f3;
+  --card: #ffffff;
+  --card-muted: #fff7ed;
+  --border: #f1e9df;
+  --text-strong: #1f2937;
+  --text-muted: #6b7280;
+  --brand: #ff8743;
+  --brand-strong: #ff6b1a;
+  --accent-emerald: #34d399;
 }
 
 body {
   font-family: 'Inter', 'Helvetica Neue', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #fefcf8;
-  color: #1f1e1d;
+  background: var(--bg-soft);
+  color: var(--text-strong);
   min-height: 100vh;
 }
 
 * {
   border-color: rgb(0 0 0 / 0.08);
+}
+
+body.hide-app-chrome .app-chrome-top,
+body.hide-app-chrome .app-chrome-bottom {
+  display: none !important;
 }
 
 body.hide-app-chrome .app-chrome-top,

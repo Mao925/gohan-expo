@@ -9,6 +9,7 @@ import { ErrorBanner } from '@/components/error-banner';
 import { FavoriteMealsList } from '@/components/favorite-meals-list';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { SurfaceCard } from '@/components/ui/surface-card';
 import { useAuth } from '@/context/auth-context';
 import { useGroupMeals, useGroupMealCandidates, useInviteGroupMealCandidates } from '@/hooks/use-group-meals';
 import { ApiError, GroupMeal, GroupMealCandidate } from '@/lib/api';
@@ -319,34 +320,30 @@ type CandidateCardProps = {
 
 function CandidateCard({ candidate, highlight, checked, onToggle }: CandidateCardProps) {
   return (
-    <label
+    <SurfaceCard
       className={cn(
-        'flex cursor-pointer flex-col gap-2 rounded-2xl border px-4 py-3 shadow-sm transition',
-        highlight
-          ? 'border-emerald-300 bg-emerald-50 ring-1 ring-emerald-100'
-          : 'border-orange-100 bg-white hover:border-orange-200 hover:bg-orange-50/60',
-        checked && !highlight ? 'border-orange-300 ring-2 ring-orange-200' : '',
-        checked && highlight ? 'ring-2 ring-emerald-200' : ''
+        'cursor-pointer px-4 py-3 transition hover:-translate-y-0.5 hover:shadow-lg',
+        highlight && 'border-emerald-200 bg-emerald-50',
+        checked && 'ring-2 ring-[var(--brand)]'
       )}
     >
-      <div className="flex items-center gap-2">
-        <input type="checkbox" className="h-4 w-4 accent-brand" checked={checked} onChange={onToggle} />
-        <div className="flex flex-col gap-1">
+      <label className="flex items-start gap-3">
+        <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--brand)]" checked={checked} onChange={onToggle} />
+        <div className="flex w-full flex-col gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-slate-900">{candidate.name}</span>
-            {highlight ? (
-              <span className="inline-flex items-center rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-semibold text-white">
-                日程が合う
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                今回は日程が合っていません
-              </span>
-            )}
+            <span className="text-sm font-semibold text-[var(--text-strong)]">{candidate.name}</span>
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                highlight ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-[var(--text-muted)]'
+              )}
+            >
+              {highlight ? '日程が合う' : '今回は日程が合っていません'}
+            </span>
           </div>
-          <FavoriteMealsList meals={candidate.favoriteMeals} className="ml-0" />
+          <FavoriteMealsList meals={candidate.favoriteMeals} variant="pill" />
         </div>
-      </div>
-    </label>
+      </label>
+    </SurfaceCard>
   );
 }
