@@ -1,3 +1,4 @@
+import { PairAvailabilitySlotDto } from './api/availability';
 import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, TimeSlot, Weekday } from './types';
 
 export const WEEKDAYS: { value: Weekday; label: string }[] = [
@@ -27,6 +28,23 @@ const TIMESLOT_LABEL_MAP: Record<TimeSlot, string> = TIMESLOTS.reduce(
 
 const DEFAULT_STATUS: AvailabilityStatus = 'UNAVAILABLE';
 const VALID_STATUSES: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE'];
+
+const JS_DAY_TO_WEEKDAY: Weekday[] = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+export type Next7Day = {
+  date: Date;
+  dayLabel: string;
+  weekdayLabel: string;
+  weekdayEnum: Weekday;
+};
+
+export type PairCell = {
+  key: string;
+  dayIndex: number;
+  timeSlot: TimeSlot;
+  selfAvailable: boolean;
+  partnerAvailable: boolean;
+};
 
 export function createDefaultGrid(): AvailabilityGrid {
   return WEEKDAYS.reduce((grid, { value: weekday }) => {
@@ -76,6 +94,60 @@ export function gridToPayload(grid: AvailabilityGrid): AvailabilitySlotDto[] {
     }
   }
   return payload;
+}
+
+export function mapJsDayToWeekdayEnum(dayIndex: number): Weekday {
+  return JS_DAY_TO_WEEKDAY[dayIndex] ?? 'SUN';
+}
+
+export function mapWeekdayEnumToJa(weekday: Weekday): string {
+  return WEEKDAY_LABEL_MAP[weekday] ?? weekday;
+}
+
+export function getNext7Days(): Next7Day[] {
+  const today = new Date();
+  const result: Next7Day[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+
+    const dayLabel = String(d.getDate());
+    const weekdayEnum = mapJsDayToWeekdayEnum(d.getDay());
+    const weekdayLabel = mapWeekdayEnumToJa(weekdayEnum);
+
+    result.push({ date: d, dayLabel, weekdayLabel, weekdayEnum });
+  }
+
+  return result;
+}
+
+export function buildPairCellsForNext7Days(days: Next7Day[], slots: PairAvailabilitySlotDto[]): PairCell[] {
+  const slotMap = new Map<string, PairAvailabilitySlotDto>();
+  (slots ?? []).forEach((slot) => {
+    const key = `${slot.weekday}-${slot.timeSlot}`;
+    if (!slotMap.has(key)) {
+      slotMap.set(key, slot);
+    }
+  });
+
+  const cells: PairCell[] = [];
+
+  days.forEach((day, dayIndex) => {
+    TIMESLOTS.forEach(({ value: timeSlot }) => {
+      const key = `${day.weekdayEnum}-${timeSlot}`;
+      const slot = slotMap.get(key);
+      cells.push({
+        key,
+        dayIndex,
+        timeSlot,
+        selfAvailable: slot?.selfAvailable ?? false,
+        partnerAvailable: slot?.partnerAvailable ?? false
+      });
+    });
+  });
+
+  return cells;
 }
 
 export function getWeekdayLabel(weekday: Weekday): string {

@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { MatchedMembersSection } from '@/components/availability/matched-members-section';
+import { PairScheduleDialog } from '@/components/availability/pair-schedule-dialog';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Card } from '@/components/ui/card';
 import { apiFetch, ApiError } from '@/lib/api';
 import { createDefaultGrid, gridToSlots, slotsToGrid, TIMESLOTS, WEEKDAYS } from '@/lib/availability';
 import { useAuth } from '@/context/auth-context';
-import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, TimeSlot, Weekday } from '@/lib/types';
+import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, MemberRelationship, Profile, TimeSlot, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const makeToday = () => {
@@ -67,9 +69,20 @@ function AvailabilityContent() {
   const { token, user } = useAuth();
   const [grid, setGrid] = useState<AvailabilityGrid>(createDefaultGrid());
   const [today, setToday] = useState<Date>(makeToday);
+  const [selectedMember, setSelectedMember] = useState<MemberRelationship | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isForbidden, setIsForbidden] = useState(false);
+
+  const { data: profileData } = useQuery<Profile>({
+    queryKey: ['profile', token],
+    queryFn: async () => {
+      if (!token) throw new Error('ログインしてください');
+      return apiFetch<Profile>('/api/profile', { token });
+    },
+    enabled: Boolean(token)
+  });
 
   const { data, isPending } = useQuery<AvailabilitySlotDto[]>({
     queryKey: ['availability', token],
@@ -168,6 +181,11 @@ function AvailabilityContent() {
     mutation.mutate(gridToSlots(nextGrid));
   };
 
+  const handleOpenDialog = (member: MemberRelationship) => {
+    setSelectedMember(member);
+    setDialogOpen(true);
+  };
+
   if (user?.isAdmin) {
     return (
       <Card>
@@ -177,7 +195,7 @@ function AvailabilityContent() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 md:space-y-8">
+    <div className="mx-auto max-w-5xl space-y-10 md:space-y-12">
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">日程調整</h1>
         <p className="mt-2 text-sm text-slate-500">曜日と昼 / 夜の組み合わせごとに空き状況を登録できます。</p>
@@ -241,6 +259,17 @@ function AvailabilityContent() {
           </div>
         </Card>
       )}
+
+      <MatchedMembersSection onSelectMember={handleOpenDialog} highlightMeals={profileData?.favoriteMeals} />
+
+      <PairScheduleDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSelectedMember(null);
+        }}
+        partner={selectedMember}
+      />
     </div>
   );
 }
