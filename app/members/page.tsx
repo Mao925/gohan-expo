@@ -10,20 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { ApiError, apiFetch } from '@/lib/api';
-import { fetchOverlapAvailability } from '@/lib/api/availability';
-import { formatAvailabilitySlot } from '@/lib/availability';
-import { Member, MemberRelationship, MemberRelationshipsResponse, OverlapSlotDto, Profile } from '@/lib/types';
+import { Member, MemberRelationship, MemberRelationshipsResponse, Profile } from '@/lib/types';
 
 type RelationshipLists = {
   matches: MemberRelationship[];
   awaitingResponse: MemberRelationship[];
   rejected: MemberRelationship[];
-};
-
-type OverlapState = {
-  isLoading: boolean;
-  slots: OverlapSlotDto[] | null;
-  error: string | null;
 };
 
 export default function MembersPage() {
@@ -45,7 +37,6 @@ function MembersContent() {
     awaitingResponse: [],
     rejected: []
   });
-  const [overlapStates, setOverlapStates] = useState<Record<string, OverlapState>>({});
 
   const getTargetUserId = useCallback((member: MemberRelationship | null | undefined) => {
     if (!member) return null;
@@ -196,35 +187,6 @@ function MembersContent() {
     }
   });
 
-  const handleCheckSchedule = useCallback(
-    async (partnerUserId: string) => {
-      setOverlapStates((prev) => ({
-        ...prev,
-        [partnerUserId]: { isLoading: true, slots: prev[partnerUserId]?.slots ?? null, error: null }
-      }));
-      try {
-        const slots = await fetchOverlapAvailability(partnerUserId, token);
-        setOverlapStates((prev) => ({
-          ...prev,
-          [partnerUserId]: { isLoading: false, slots, error: null }
-        }));
-      } catch (err) {
-        const apiError = err as ApiError | undefined;
-        let message = apiError?.message ?? '取得に失敗しました';
-        if (apiError?.status === 403) {
-          message = 'この相手の日程は参照できません';
-        } else if (apiError?.status === 500) {
-          message = 'サーバーエラーが発生しました';
-        }
-        setOverlapStates((prev) => ({
-          ...prev,
-          [partnerUserId]: { isLoading: false, slots: null, error: message }
-        }));
-      }
-    },
-    [token]
-  );
-
   const isRelationshipView = !isAdminUser;
   const isListLoading = isRelationshipView ? relationshipsPending : membersPending;
 
@@ -235,7 +197,6 @@ function MembersContent() {
     return refetchMembers();
   };
 
-  const relationshipMatches = relationshipLists.matches;
   const relationshipAwaitingResponse = relationshipLists.awaitingResponse;
   const relationshipRejected = relationshipLists.rejected;
   const myFavoriteMeals =
@@ -259,48 +220,6 @@ function MembersContent() {
         <p className="text-slate-500">読み込み中...</p>
       ) : isRelationshipView ? (
         <div className="space-y-8">
-          <RelationshipSection
-            title="マッチ一覧"
-            description="両想いになったお相手です。"
-            emptyMessage="まだマッチはありません。"
-            members={relationshipMatches}
-            highlightMeals={myFavoriteMeals}
-            renderAction={(member) => {
-              const targetId = getTargetUserId(member);
-              if (!targetId) return null;
-              const state = overlapStates[targetId];
-              const isLoading = Boolean(state?.isLoading);
-              return (
-                <Button type="button" size="sm" onClick={() => handleCheckSchedule(targetId)} disabled={isLoading}>
-                  {isLoading ? '確認中...' : '日程を確認'}
-                </Button>
-              );
-            }}
-            renderDetail={(member) => {
-              const targetId = getTargetUserId(member);
-              if (!targetId) return null;
-              const state = overlapStates[targetId];
-              if (!state) return null;
-              if (state.isLoading) {
-                return <p className="text-sm text-slate-500">確認中...</p>;
-              }
-              if (state.error) {
-                return <p className="text-sm font-semibold text-red-600">{state.error}</p>;
-              }
-              if (state.slots && state.slots.length === 0) {
-                return <p className="text-sm text-slate-600">一致している日程がありません</p>;
-              }
-              if (state.slots && state.slots.length > 0) {
-                return (
-                  <p className="text-sm text-slate-700">
-                    <span className="font-semibold text-slate-900">共通の空き:</span>{' '}
-                    {state.slots.map((slot) => formatAvailabilitySlot(slot.weekday, slot.timeSlot)).join(' / ')}
-                  </p>
-                );
-              }
-              return null;
-            }}
-          />
           <RelationshipSection
             title="回答待ち（自分は YES）"
             description="あなたは YES 済みで、相手の回答を待っている一覧です。"
