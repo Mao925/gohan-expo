@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useGroupMeals, useGroupMealCandidates, useInviteGroupMealCandidates } from '@/hooks/use-group-meals';
-import { ApiError, GroupMeal } from '@/lib/api';
+import { ApiError, GroupMeal, GroupMealCandidate } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
 
@@ -238,54 +238,115 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
           </div>
           {candidatesPending ? (
             <p className="text-sm text-slate-600">候補を読み込み中...</p>
-          ) : !candidatesData || candidatesData.candidates.length === 0 ? (
+          ) : !candidatesData ? (
             <p className="text-sm text-slate-600">招待可能なメンバーがいません。</p>
           ) : (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {candidatesData.candidates.map((candidate) => {
-                  const checked = selectedUserIds.includes(candidate.userId);
-                  return (
-                    <label
-                      key={candidate.userId}
-                      className={cn(
-                        'flex cursor-pointer flex-col gap-2 rounded-2xl border bg-white px-4 py-3 shadow-sm transition hover:border-orange-200 hover:bg-orange-50/60',
-                        checked ? 'border-orange-300 ring-2 ring-orange-200' : 'border-orange-100'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 accent-brand"
-                          checked={checked}
-                          onChange={() => handleToggle(candidate.userId)}
-                        />
-                        <span className="text-sm font-semibold text-slate-900">{candidate.name}</span>
+            (() => {
+              const candidates = candidatesData.candidates ?? [];
+              const availableCandidates = candidates.filter((c) => c.isAvailableForSlot);
+              const unavailableCandidates = candidates.filter((c) => !c.isAvailableForSlot);
+
+              return candidates.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  まだ招待できるメンバーがいません。他のメンバーがコミュニティに参加すると表示されます。
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {availableCandidates.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-emerald-600">この箱の日程と合っているメンバー</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {availableCandidates.map((candidate) => (
+                          <CandidateCard
+                            key={candidate.userId}
+                            candidate={candidate}
+                            highlight
+                            checked={selectedUserIds.includes(candidate.userId)}
+                            onToggle={() => handleToggle(candidate.userId)}
+                          />
+                        ))}
                       </div>
-                      <FavoriteMealsList meals={candidate.favoriteMeals} className="ml-6" />
-                    </label>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-3">
-                <Button variant="secondary" size="sm" onClick={() => setSelectedUserIds([])} disabled={inviteMutation.isPending}>
-                  クリア
-                </Button>
-                <Button onClick={handleInvite} disabled={inviteMutation.isPending || selectedUserIds.length === 0}>
-                  {inviteMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      招待中...
-                    </>
-                  ) : (
-                    `選択したメンバーを招待 (${selectedUserIds.length})`
-                  )}
-                </Button>
-              </div>
-            </>
+                    </div>
+                  ) : null}
+
+                  {unavailableCandidates.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-slate-500">今回の日程とは合っていないメンバー</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {unavailableCandidates.map((candidate) => (
+                          <CandidateCard
+                            key={candidate.userId}
+                            candidate={candidate}
+                            highlight={false}
+                            checked={selectedUserIds.includes(candidate.userId)}
+                            onToggle={() => handleToggle(candidate.userId)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()
           )}
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button variant="secondary" size="sm" onClick={() => setSelectedUserIds([])} disabled={inviteMutation.isPending}>
+              クリア
+            </Button>
+            <Button onClick={handleInvite} disabled={inviteMutation.isPending || selectedUserIds.length === 0}>
+              {inviteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  招待中...
+                </>
+              ) : (
+                `選択したメンバーを招待 (${selectedUserIds.length})`
+              )}
+            </Button>
+          </div>
         </Card>
       ) : null}
     </div>
+  );
+}
+
+type CandidateCardProps = {
+  candidate: GroupMealCandidate;
+  highlight?: boolean;
+  checked: boolean;
+  onToggle: () => void;
+};
+
+function CandidateCard({ candidate, highlight, checked, onToggle }: CandidateCardProps) {
+  return (
+    <label
+      className={cn(
+        'flex cursor-pointer flex-col gap-2 rounded-2xl border px-4 py-3 shadow-sm transition',
+        highlight
+          ? 'border-emerald-300 bg-emerald-50 ring-1 ring-emerald-100'
+          : 'border-orange-100 bg-white hover:border-orange-200 hover:bg-orange-50/60',
+        checked && !highlight ? 'border-orange-300 ring-2 ring-orange-200' : '',
+        checked && highlight ? 'ring-2 ring-emerald-200' : ''
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <input type="checkbox" className="h-4 w-4 accent-brand" checked={checked} onChange={onToggle} />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-900">{candidate.name}</span>
+            {highlight ? (
+              <span className="inline-flex items-center rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                日程が合う
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                今回は日程が合っていません
+              </span>
+            )}
+          </div>
+          <FavoriteMealsList meals={candidate.favoriteMeals} className="ml-0" />
+        </div>
+      </div>
+    </label>
   );
 }

@@ -108,6 +108,7 @@ export type GroupMealCandidate = {
   userId: string;
   name: string;
   favoriteMeals: string[];
+  isAvailableForSlot: boolean;
 };
 
 export type GroupMealCandidatesResponse = {

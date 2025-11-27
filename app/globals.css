@@ -16,3 +16,8 @@ body {
 * {
   border-color: rgb(0 0 0 / 0.08);
 }
+
+body.hide-app-chrome .app-chrome-top,
+body.hide-app-chrome .app-chrome-bottom {
+  display: none !important;
+}

@@ -1,18 +1,32 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { FavoriteMealsList } from '@/components/favorite-meals-list';
-import { ErrorBanner } from '@/components/error-banner';
-import { useAuth } from '@/context/auth-context';
-import { apiFetch } from '@/lib/api';
-import { fetchPairAvailability, PairAvailabilitySlotDto } from '@/lib/api/availability';
-import { buildPairCellsForNext7Days, getNext7Days, Next7Day, PairCell, TIMESLOTS } from '@/lib/availability';
-import { MemberRelationship, Profile, TimeSlot } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { FavoriteMealsList } from "@/components/favorite-meals-list";
+import { ErrorBanner } from "@/components/error-banner";
+import { useAuth } from "@/context/auth-context";
+import { apiFetch } from "@/lib/api";
+import {
+  fetchPairAvailability,
+  PairAvailabilitySlotDto,
+} from "@/lib/api/availability";
+import {
+  buildPairCellsForNext7Days,
+  getNext7Days,
+  Next7Day,
+  PairCell,
+  TIMESLOTS,
+} from "@/lib/availability";
+import { MemberRelationship, Profile, TimeSlot } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 type PairScheduleDialogProps = {
   open: boolean;
@@ -20,35 +34,54 @@ type PairScheduleDialogProps = {
   partner: MemberRelationship | null;
 };
 
-export function PairScheduleDialog({ open, onOpenChange, partner }: PairScheduleDialogProps) {
+export function PairScheduleDialog({
+  open,
+  onOpenChange,
+  partner,
+}: PairScheduleDialogProps) {
   const { token, user } = useAuth();
   const partnerUserId = partner?.targetUserId ?? partner?.id ?? null;
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const cls = "hide-app-chrome";
+    const body = document.body;
+    if (open) {
+      body.classList.add(cls);
+    } else {
+      body.classList.remove(cls);
+    }
+    return () => body.classList.remove(cls);
+  }, [open]);
+
   const { data: profileData } = useQuery<Profile>({
-    queryKey: ['profile', token],
+    queryKey: ["profile", token],
     queryFn: () => {
-      if (!token) throw new Error('ログインしてください');
-      return apiFetch<Profile>('/api/profile', { token });
+      if (!token) throw new Error("ログインしてください");
+      return apiFetch<Profile>("/api/profile", { token });
     },
-    enabled: open && Boolean(token)
+    enabled: open && Boolean(token),
   });
 
   const {
     data: pairData,
     isPending,
-    error
+    error,
   } = useQuery<{ slots: PairAvailabilitySlotDto[] }>({
-    queryKey: ['pair-availability', partnerUserId, token],
+    queryKey: ["pair-availability", partnerUserId, token],
     queryFn: async () => {
-      if (!partnerUserId) throw new Error('表示するお相手が見つかりません');
+      if (!partnerUserId) throw new Error("表示するお相手が見つかりません");
       return fetchPairAvailability(partnerUserId, token ?? undefined);
     },
-    enabled: open && Boolean(partnerUserId && token)
+    enabled: open && Boolean(partnerUserId && token),
   });
 
   const days = useMemo<Next7Day[]>(() => getNext7Days(), [open]);
 
-  const cells = useMemo<PairCell[]>(() => buildPairCellsForNext7Days(days, pairData?.slots ?? []), [days, pairData?.slots]);
+  const cells = useMemo<PairCell[]>(
+    () => buildPairCellsForNext7Days(days, pairData?.slots ?? []),
+    [days, pairData?.slots]
+  );
 
   const cellMap = useMemo(() => {
     const map = new Map<string, PairCell>();
@@ -56,16 +89,30 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
     return map;
   }, [cells]);
 
+  const getCellLabel = (selfAvailable: boolean, partnerAvailable: boolean) => {
+    if (selfAvailable && partnerAvailable)
+      return "あなたも相手も参加できる枠です";
+    if (!selfAvailable && partnerAvailable)
+      return "相手だけ参加できる枠です（あなたは×）";
+    return "どちらも参加できない枠です";
+  };
+
   const renderCell = (dayIndex: number, timeSlot: TimeSlot) => {
     const cell = cellMap.get(`${dayIndex}-${timeSlot}`);
     const selfAvailable = cell?.selfAvailable ?? false;
     const partnerAvailable = cell?.partnerAvailable ?? false;
 
-    const baseClasses = 'flex h-12 items-center justify-center rounded-xl text-sm font-semibold';
+    const baseClasses =
+      "flex h-12 items-center justify-center rounded-xl text-sm font-semibold";
 
     if (selfAvailable && partnerAvailable) {
       return (
-        <div key={`${dayIndex}-${timeSlot}`} className={cn(baseClasses, 'bg-emerald-500 text-white shadow-sm')}>
+        <div
+          key={`${dayIndex}-${timeSlot}`}
+          className={cn(baseClasses, "bg-emerald-500 text-white shadow-sm")}
+          title={getCellLabel(selfAvailable, partnerAvailable)}
+          aria-label={getCellLabel(selfAvailable, partnerAvailable)}
+        >
           GO
         </div>
       );
@@ -73,14 +120,27 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
 
     if (!selfAvailable && partnerAvailable) {
       return (
-        <div key={`${dayIndex}-${timeSlot}`} className={cn(baseClasses, 'border border-emerald-400 bg-white text-emerald-500')}>
+        <div
+          key={`${dayIndex}-${timeSlot}`}
+          className={cn(
+            baseClasses,
+            "border border-emerald-400 bg-white text-emerald-500"
+          )}
+          title={getCellLabel(selfAvailable, partnerAvailable)}
+          aria-label={getCellLabel(selfAvailable, partnerAvailable)}
+        >
           GO
         </div>
       );
     }
 
     return (
-      <div key={`${dayIndex}-${timeSlot}`} className={cn(baseClasses, 'bg-slate-50 text-slate-300')}>
+      <div
+        key={`${dayIndex}-${timeSlot}`}
+        className={cn(baseClasses, "bg-slate-50 text-slate-300")}
+        title={getCellLabel(selfAvailable, partnerAvailable)}
+        aria-label={getCellLabel(selfAvailable, partnerAvailable)}
+      >
         ×
       </div>
     );
@@ -90,16 +150,24 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl space-y-6">
         <div className="space-y-1">
-          <DialogTitle className="text-xl font-semibold text-slate-900">{partner ? `${partner.name}さんとの日程` : '日程'}</DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">今週の GO / STAY を確認できます。</DialogDescription>
+          <DialogTitle className="text-xl font-semibold text-slate-900">
+            {partner ? `${partner.name}さんとの日程` : "日程"}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-slate-500">
+            今週の GO / STAY を確認できます。
+          </DialogDescription>
         </div>
 
         {isPending ? (
           <p className="py-10 text-center text-slate-500">読み込み中...</p>
         ) : error ? (
-          <ErrorBanner message={(error as Error)?.message ?? '取得に失敗しました'} />
+          <ErrorBanner
+            message={(error as Error)?.message ?? "取得に失敗しました"}
+          />
         ) : !pairData ? (
-          <p className="py-10 text-center text-slate-500">データがありません。</p>
+          <p className="py-10 text-center text-slate-500">
+            データがありません。
+          </p>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -108,9 +176,16 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
                   <div />
                   <div className="grid grid-cols-7 gap-3">
                     {days.map((d) => (
-                      <div key={d.date.toISOString()} className="space-y-1 rounded-xl bg-slate-50 py-2">
-                        <div className="text-base font-semibold text-slate-900">{d.dayLabel}</div>
-                        <div className="text-xs text-slate-500">{d.weekdayLabel}</div>
+                      <div
+                        key={d.date.toISOString()}
+                        className="space-y-1 rounded-xl bg-slate-50 py-2"
+                      >
+                        <div className="text-base font-semibold text-slate-900">
+                          {d.dayLabel}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {d.weekdayLabel}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -118,10 +193,17 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
 
                 <div className="space-y-3">
                   {TIMESLOTS.map((slot) => (
-                    <div key={slot.value} className="grid grid-cols-[72px_1fr] items-center gap-3">
-                      <div className="text-right text-sm font-semibold text-slate-700">{slot.label}</div>
+                    <div
+                      key={slot.value}
+                      className="grid grid-cols-[72px_1fr] items-center gap-3"
+                    >
+                      <div className="text-right text-sm font-semibold text-slate-700">
+                        {slot.label}
+                      </div>
                       <div className="grid grid-cols-7 gap-3">
-                        {days.map((_, dayIndex) => renderCell(dayIndex, slot.value))}
+                        {days.map((_, dayIndex) =>
+                          renderCell(dayIndex, slot.value)
+                        )}
                       </div>
                     </div>
                   ))}
@@ -129,10 +211,31 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
               </div>
             </div>
 
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-lg bg-emerald-500 px-2 py-1 text-[11px] font-semibold text-white">
+                  GO
+                </span>
+                <span className="text-slate-700">
+                  あなた・相手の両方が参加できる枠
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-lg border border-emerald-400 px-2 py-1 text-[11px] font-semibold text-emerald-600">
+                  GO
+                </span>
+                <span className="text-slate-700">
+                  相手のみ参加できる枠（自分は×）
+                </span>
+              </div>
+            </div>
+
             <Card className="space-y-4 border border-slate-100 bg-slate-50 p-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-700">{user?.name ?? 'あなた'}</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {user?.name ?? "あなた"}
+                  </p>
                   <FavoriteMealsList
                     meals={profileData?.favoriteMeals}
                     placeholder="好きなご飯: 未設定"
@@ -140,7 +243,9 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
                   />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-700">{partner?.name ?? 'お相手'}</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {partner?.name ?? "お相手"}
+                  </p>
                   <FavoriteMealsList
                     meals={partner?.favoriteMeals}
                     placeholder="好きなご飯: 未設定"
@@ -151,7 +256,11 @@ export function PairScheduleDialog({ open, onOpenChange, partner }: PairSchedule
             </Card>
 
             <div className="flex justify-end">
-              <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+              >
                 閉じる
               </Button>
             </div>
