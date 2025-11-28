@@ -9,6 +9,7 @@ export type Profile = {
   id: string;
   name: string;
   favoriteMeals: string[];
+  profileImageUrl?: string | null; // 👈 追加
 };
 
 export type CommunityStatus = 'UNAPPLIED' | 'PENDING' | 'APPROVED';
