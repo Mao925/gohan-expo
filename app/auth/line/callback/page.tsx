@@ -1,3 +1,4 @@
+// app/auth/line/callback/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -20,9 +21,7 @@ export default function LineCallbackPage() {
   const newUserParam = searchParams.get('newUser') ?? '';
   const isNewUser = newUserParam.toLowerCase() === 'true';
 
-  // ★ここが「オンボーディングに飛ばす」ポイント
-  //   - プロフィール設定画面がオンボなら '/profile' のままでOK
-  //   - 専用のオンボ画面があるなら '/onboarding' などに変更
+  // ★ 新規登録時だけオンボーディングへ、それ以外はコミュニティ申請へ
   const destination = useMemo(
     () => (isNewUser ? '/onboarding' : '/community/join'),
     [isNewUser]
@@ -48,7 +47,7 @@ export default function LineCallbackPage() {
         setStatus('success');
         setMessage(
           isNewUser
-            ? '登録が完了しました。プロフィール設定に進みます。'
+            ? '登録が完了しました。オンボーディングに進みます。'
             : 'ログインに成功しました。コミュニティに移動します。'
         );
         router.replace(destination);
