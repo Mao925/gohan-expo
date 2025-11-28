@@ -1,7 +1,6 @@
-// app/profile/page.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,17 +15,12 @@ import { Field } from '@/components/forms/field';
 import { useAuth } from '@/context/auth-context';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { FAVORITE_MEAL_OPTIONS } from '@/lib/favorite-meal-options';
-import type { Profile } from '@/lib/types';
+import { Profile } from '@/lib/types';
 
 const schema = z.object({
   name: z.string().min(2, '2文字以上で入力してください'),
-  favoriteMeals: z.array(z.string()).max(3)
+  favoriteMeals: z.array(z.string()).max(3),
 });
-
-// バックエンドのレスポンスで profileImageUrl を返している前提
-type ProfileResponse = Profile & {
-  profileImageUrl?: string | null;
-};
 
 type FormValues = z.infer<typeof schema>;
 
@@ -38,103 +32,112 @@ export default function ProfilePage() {
   );
 }
 
+// 相対パス(`/uploads/...`) を API_BASE_URL 付きのフル URL に変換するヘルパー
+function buildImageUrl(raw?: string | null) {
+  if (!raw) return null;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw;
+  }
+  try {
+    return new URL(raw, API_BASE_URL).toString();
+  } catch {
+    return raw;
+  }
+}
+
 function ProfileContent() {
   const { token } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', favoriteMeals: [] }
+    defaultValues: { name: '', favoriteMeals: [] },
   });
 
-  const { data, isPending } = useQuery<ProfileResponse>({
+  const { data, isPending } = useQuery<Profile>({
     queryKey: ['profile', token],
     queryFn: async () => {
       try {
         setError(null);
-        return await apiFetch('/api/profile', { token });
+        const profile = await apiFetch<Profile>('/api/profile', { token });
+        setImagePreviewUrl(buildImageUrl(profile.profileImageUrl ?? null));
+        return profile;
       } catch (err: any) {
         setError(err?.message ?? '読み込みに失敗しました');
         throw err;
       }
     },
-    enabled: Boolean(token)
+    enabled: Boolean(token),
   });
 
   useEffect(() => {
     if (data) {
       form.reset({
         name: data.name,
-        favoriteMeals: data.favoriteMeals ?? []
+        favoriteMeals: data.favoriteMeals ?? [],
       });
-      setPreviewUrl(data.profileImageUrl ?? null);
+      setImagePreviewUrl(buildImageUrl(data.profileImageUrl ?? null));
     }
   }, [data, form]);
 
-  const mutation = useMutation<ProfileResponse, any, FormValues>({
+  const mutation = useMutation<Profile, any, FormValues>({
     mutationFn: (values) =>
       apiFetch('/api/profile', {
         method: 'PUT',
         data: { name: values.name, favoriteMeals: values.favoriteMeals },
-        token
-      })
+        token,
+      }),
+    onSuccess: (profile) => {
+      setImagePreviewUrl(buildImageUrl(profile.profileImageUrl ?? null));
+    },
   });
 
-  // プロフィール画像アップロード
-  const imageMutation = useMutation<ProfileResponse, any, File>({
-    mutationFn: async (file: File) => {
-      if (!token) {
-        throw new Error('ログイン情報が見つかりません。再度ログインしてください。');
-      }
+  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !token) return;
+
+    setImageError(null);
+    setIsUploadingImage(true);
+
+    try {
       const formData = new FormData();
       formData.append('image', file);
 
-      const res = await fetch(new URL('/api/profile/image', API_BASE_URL).toString(), {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      });
+      const res = await fetch(
+        new URL('/api/profile/image', API_BASE_URL).toString(),
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
 
       if (!res.ok) {
-        const json = await res.json().catch(() => null);
-        throw new Error(json?.message ?? '画像のアップロードに失敗しました');
+        let message = '画像のアップロードに失敗しました';
+        try {
+          const body = await res.json();
+          if (body?.message) message = body.message;
+        } catch {
+          // ignore
+        }
+        throw new Error(message);
       }
 
-      return (await res.json()) as ProfileResponse;
-    },
-    onSuccess: (updated) => {
-      setPreviewUrl(updated.profileImageUrl ?? null);
-      setImageError(null);
-    },
-    onError: (err: any) => {
+      const updated: Profile = await res.json();
+      setImagePreviewUrl(buildImageUrl(updated.profileImageUrl ?? null));
+    } catch (err: any) {
+      console.error('Failed to upload image', err);
       setImageError(err?.message ?? '画像のアップロードに失敗しました');
-      setPreviewUrl(data?.profileImageUrl ?? null);
+    } finally {
+      setIsUploadingImage(false);
+      // 同じファイルを再選択できるように
+      event.target.value = '';
     }
-  });
-
-  const handleClickSelectFile = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImageError(null);
-
-    const localUrl = URL.createObjectURL(file);
-    setPreviewUrl(localUrl);
-
-    imageMutation.mutate(file, {
-      onSettled: () => {
-        URL.revokeObjectURL(localUrl);
-      }
-    });
   };
 
   return (
@@ -151,7 +154,7 @@ function ProfileContent() {
           <p className="text-slate-500">読み込み中...</p>
         ) : (
           <form
-            className="space-y-6"
+            className="space-y-5"
             onSubmit={form.handleSubmit(async (values) => {
               setError(null);
               try {
@@ -161,14 +164,15 @@ function ProfileContent() {
               }
             })}
           >
-            {/* プロフィール画像セクション */}
-            <section className="space-y-3">
-              <h2 className="text-sm font-medium text-slate-700">プロフィール画像</h2>
+            {/* プロフィール画像 */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-slate-900">プロフィール画像</p>
               <div className="flex items-center gap-4">
-                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 text-xs text-slate-400">
-                  {previewUrl ? (
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xs text-slate-500">
+                  {imagePreviewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={previewUrl}
+                      src={imagePreviewUrl}
                       alt="プロフィール画像"
                       className="h-full w-full object-cover"
                     />
@@ -176,31 +180,31 @@ function ProfileContent() {
                     <span>画像なし</span>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-3">
                     <input
-                      ref={fileInputRef}
+                      id="profile-image-input"
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={handleFileChange}
+                      onChange={handleImageChange}
                     />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleClickSelectFile}
-                      disabled={imageMutation.isPending}
-                      className="rounded-full px-4"
-                    >
-                      {imageMutation.isPending ? 'アップロード中...' : '画像を選択'}
-                    </Button>
+                    <label htmlFor="profile-image-input">
+                      <Button
+                        type="button"
+                        disabled={isUploadingImage}
+                        className="rounded-full px-4"
+                      >
+                        {isUploadingImage ? 'アップロード中...' : '画像を選択'}
+                      </Button>
+                    </label>
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-slate-500">
                     顔が分かる写真をアップロードしてください。
                   </p>
                 </div>
               </div>
-            </section>
+            </div>
 
             {/* 名前 */}
             <Field label="名前" error={form.formState.errors.name?.message}>
@@ -211,7 +215,9 @@ function ProfileContent() {
             <FavoriteMealsSelector
               selected={form.watch('favoriteMeals')}
               onChange={(next) => form.setValue('favoriteMeals', next)}
-              error={form.formState.errors.favoriteMeals?.message as string | undefined}
+              error={form.formState.errors.favoriteMeals?.message as
+                | string
+                | undefined}
             />
 
             <Button type="submit" disabled={mutation.isPending}>
@@ -224,15 +230,17 @@ function ProfileContent() {
   );
 }
 
-// ===== 好きなご飯セレクター =====
-
 type FavoriteMealsSelectorProps = {
   selected: string[];
   onChange: (next: string[]) => void;
   error?: string;
 };
 
-function FavoriteMealsSelector({ selected, onChange, error }: FavoriteMealsSelectorProps) {
+function FavoriteMealsSelector({
+  selected,
+  onChange,
+  error,
+}: FavoriteMealsSelectorProps) {
   const current = selected ?? [];
 
   const toggleMeal = (meal: string) => {
@@ -240,8 +248,8 @@ function FavoriteMealsSelector({ selected, onChange, error }: FavoriteMealsSelec
       current.includes(meal)
         ? current.filter((m) => m !== meal)
         : current.length >= 3
-          ? current
-          : [...current, meal]
+        ? current
+        : [...current, meal]
     );
   };
 
