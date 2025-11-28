@@ -1,4 +1,4 @@
-// app/auth/line/callback/page.tsx
+// frontend/app/auth/line/callback/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -19,21 +19,32 @@ export default function LineCallbackPage() {
 
   const token = searchParams.get('token');
   const newUserParam = searchParams.get('newUser') ?? '';
+  const errorParam = searchParams.get('error');
   const isNewUser = newUserParam.toLowerCase() === 'true';
 
-  // ★ 新規登録時だけオンボーディングへ、それ以外はコミュニティ申請へ
+  // 🔹 新規登録時のみオンボーディングへ
   const destination = useMemo(
     () => (isNewUser ? '/onboarding' : '/community/join'),
     [isNewUser]
   );
 
   useEffect(() => {
-    console.log('[LINE CALLBACK] token, newUserParam, isNewUser', {
+    console.log('[LINE CALLBACK] token, newUserParam, isNewUser, errorParam', {
       token,
       newUserParam,
       isNewUser,
+      errorParam,
       destination,
     });
+
+    // login intent で user が存在しなかったケース
+    if (errorParam === 'not_registered') {
+      setStatus('error');
+      setMessage(
+        'このLINEアカウントではまだ新規登録が完了していません。「新規登録」からアカウントを作成してください。'
+      );
+      return;
+    }
 
     if (!token) {
       setStatus('error');
@@ -57,7 +68,7 @@ export default function LineCallbackPage() {
         setMessage('ログインに失敗しました。お手数ですが再度お試しください。');
       }
     })();
-  }, [destination, isNewUser, loginWithToken, router, token, newUserParam]);
+  }, [destination, isNewUser, loginWithToken, router, token, newUserParam, errorParam]);
 
   return (
     <Card className="mx-auto max-w-md space-y-4 text-center">
