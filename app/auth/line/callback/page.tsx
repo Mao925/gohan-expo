@@ -24,7 +24,7 @@ export default function LineCallbackPage() {
   //   - プロフィール設定画面がオンボなら '/profile' のままでOK
   //   - 専用のオンボ画面があるなら '/onboarding' などに変更
   const destination = useMemo(
-    () => (isNewUser ? '/profile' : '/community/join'),
+    () => (isNewUser ? '/onboarding' : '/community/join'),
     [isNewUser]
   );
 
