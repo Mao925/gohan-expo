@@ -182,14 +182,15 @@ function ProfileContent() {
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3">
-                    <input
-                      id="profile-image-input"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageChange}
-                    />
-                    <label htmlFor="profile-image-input">
+                    {/* ボタンの上に透明な input をかぶせる */}
+                    <div className="relative inline-block">
+                      <input
+                        id="profile-image-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      />
                       <Button
                         type="button"
                         disabled={isUploadingImage}
@@ -197,7 +198,7 @@ function ProfileContent() {
                       >
                         {isUploadingImage ? 'アップロード中...' : '画像を選択'}
                       </Button>
-                    </label>
+                    </div>
                   </div>
                   <p className="mt-2 text-xs text-slate-500">
                     顔が分かる写真をアップロードしてください。
