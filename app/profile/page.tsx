@@ -12,9 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/forms/field';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { useAuth } from '@/context/auth-context';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { FAVORITE_MEAL_OPTIONS } from '@/lib/favorite-meal-options';
+import { resolveProfileImageUrl } from '@/lib/profile-image';
 import { Profile } from '@/lib/types';
 
 const schema = z.object({
@@ -32,19 +34,6 @@ export default function ProfilePage() {
   );
 }
 
-// 相対パス(`/uploads/...`) を API_BASE_URL 付きのフル URL に変換するヘルパー
-function buildImageUrl(raw?: string | null) {
-  if (!raw) return null;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    return raw;
-  }
-  try {
-    return new URL(raw, API_BASE_URL).toString();
-  } catch {
-    return raw;
-  }
-}
-
 function ProfileContent() {
   const { token } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +45,7 @@ function ProfileContent() {
     resolver: zodResolver(schema),
     defaultValues: { name: '', favoriteMeals: [] },
   });
+  const watchedName = form.watch('name');
 
   const { data, isPending } = useQuery<Profile>({
     queryKey: ['profile', token],
@@ -63,7 +53,7 @@ function ProfileContent() {
       try {
         setError(null);
         const profile = await apiFetch<Profile>('/api/profile', { token });
-        setImagePreviewUrl(buildImageUrl(profile.profileImageUrl ?? null));
+        setImagePreviewUrl(resolveProfileImageUrl(profile.profileImageUrl ?? null));
         return profile;
       } catch (err: any) {
         setError(err?.message ?? '読み込みに失敗しました');
@@ -79,7 +69,7 @@ function ProfileContent() {
         name: data.name,
         favoriteMeals: data.favoriteMeals ?? [],
       });
-      setImagePreviewUrl(buildImageUrl(data.profileImageUrl ?? null));
+      setImagePreviewUrl(resolveProfileImageUrl(data.profileImageUrl ?? null));
     }
   }, [data, form]);
 
@@ -91,7 +81,7 @@ function ProfileContent() {
         token,
       }),
     onSuccess: (profile) => {
-      setImagePreviewUrl(buildImageUrl(profile.profileImageUrl ?? null));
+      setImagePreviewUrl(resolveProfileImageUrl(profile.profileImageUrl ?? null));
     },
   });
 
@@ -129,7 +119,7 @@ function ProfileContent() {
       }
 
       const updated: Profile = await res.json();
-      setImagePreviewUrl(buildImageUrl(updated.profileImageUrl ?? null));
+      setImagePreviewUrl(resolveProfileImageUrl(updated.profileImageUrl ?? null));
     } catch (err: any) {
       console.error('Failed to upload image', err);
       setImageError(err?.message ?? '画像のアップロードに失敗しました');
@@ -139,6 +129,8 @@ function ProfileContent() {
       event.target.value = '';
     }
   };
+
+  const avatarName = data?.name ?? watchedName;
 
   return (
     <div className="space-y-6">
@@ -168,18 +160,12 @@ function ProfileContent() {
             <div className="space-y-3">
               <p className="text-sm font-medium text-slate-900">プロフィール画像</p>
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xs text-slate-500">
-                  {imagePreviewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={imagePreviewUrl}
-                      alt="プロフィール画像"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span>画像なし</span>
-                  )}
-                </div>
+                <ProfileAvatar
+                  imageUrl={imagePreviewUrl}
+                  name={avatarName}
+                  size="lg"
+                  className="flex-shrink-0"
+                />
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3">
                     {/* ボタンの上に透明な input をかぶせる */}

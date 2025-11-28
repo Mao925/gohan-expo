@@ -5,6 +5,7 @@ import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { FavoriteMealsList } from '@/components/favorite-meals-list';
 import { MemberCard } from '@/components/member-card';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -370,8 +371,16 @@ type RelationshipCardProps = {
 function RelationshipCard({ member, highlightMeals, action, detail }: RelationshipCardProps) {
   return (
     <Card className="flex flex-col gap-3 border border-orange-100 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-lg font-semibold text-slate-900">{member.name}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <ProfileAvatar
+            imageUrl={member.profileImageUrl}
+            name={member.name}
+            size="sm"
+            className="flex-shrink-0"
+          />
+          <p className="text-lg font-semibold text-slate-900">{member.name}</p>
+        </div>
         {action ? <div>{action}</div> : null}
       </div>
       <FavoriteMealsList meals={member.favoriteMeals} highlightMeals={highlightMeals} />

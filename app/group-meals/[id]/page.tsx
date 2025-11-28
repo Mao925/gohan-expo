@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, Clock3, Loader2, ShieldCheck, Users, UserRound } from 'lucide-react';
+import { CalendarDays, Clock3, Loader2, ShieldCheck, Users } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { FavoriteMealsList } from '@/components/favorite-meals-list';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SurfaceCard } from '@/components/ui/surface-card';
@@ -172,7 +173,12 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
       <Card className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="flex items-center gap-3 rounded-2xl bg-orange-50 px-4 py-3">
-            <UserRound className="h-5 w-5 text-orange-500" />
+            <ProfileAvatar
+              imageUrl={groupMeal.host.profileImageUrl}
+              name={groupMeal.host.name}
+              size="md"
+              className="flex-shrink-0"
+            />
             <div>
               <p className="text-xs uppercase tracking-wide text-orange-600">ホスト</p>
               <p className="text-base font-semibold text-slate-900">{groupMeal.host.name}</p>
@@ -211,20 +217,30 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
                 key={participant.userId}
                 className="rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 shadow-sm"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900">
-                      {participant.name}
-                    </span>
-                    {participant.isHost ? (
-                      <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-semibold text-orange-700">
-                        ホスト
-                      </span>
-                    ) : null}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <ProfileAvatar
+                      imageUrl={participant.profileImageUrl}
+                      name={participant.name}
+                      size="sm"
+                      className="flex-shrink-0"
+                    />
+                    <div className="flex flex-1 flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-900">
+                          {participant.name}
+                        </span>
+                        {participant.isHost ? (
+                          <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-semibold text-orange-700">
+                            ホスト
+                          </span>
+                        ) : null}
+                      </div>
+                      <FavoriteMealsList meals={participant.favoriteMeals} className="mt-0" />
+                    </div>
                   </div>
                   <span className="text-xs font-semibold text-emerald-700">参加中</span>
                 </div>
-                <FavoriteMealsList meals={participant.favoriteMeals} className="mt-2" />
               </div>
             ))}
           </div>
@@ -329,6 +345,12 @@ function CandidateCard({ candidate, highlight, checked, onToggle }: CandidateCar
     >
       <label className="flex items-start gap-3">
         <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--brand)]" checked={checked} onChange={onToggle} />
+        <ProfileAvatar
+          imageUrl={candidate.profileImageUrl}
+          name={candidate.name}
+          size="sm"
+          className="flex-shrink-0"
+        />
         <div className="flex w-full flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[var(--text-strong)]">{candidate.name}</span>

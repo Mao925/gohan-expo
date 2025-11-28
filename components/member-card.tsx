@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Member } from '@/lib/types';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { cn } from '@/lib/utils';
 import { FavoriteMealsList } from './favorite-meals-list';
 
@@ -19,30 +20,42 @@ export function MemberCard({ member, onRemove, canRemove, myFavoriteMeals }: Pro
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <Card className={cn('relative flex flex-col gap-3 border-orange-100', member.isSelf && 'border-brand/50')}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-lg font-semibold text-slate-900">
-            {member.name}
-            {member.isSelf ? '（あなた）' : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {member.isSelf ? <span className="rounded-full bg-brand/10 px-3 py-1 text-xs text-brand">自分です</span> : null}
-          {canRemove && onRemove ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="rounded-full border border-red-200 bg-red-50 px-4 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
-              onClick={() => setConfirming(true)}
-            >
-              削除
-            </Button>
-          ) : null}
+    <Card className={cn('relative border-orange-100', member.isSelf && 'border-brand/50')}>
+      <div className="flex items-start gap-3">
+        <ProfileAvatar
+          imageUrl={member.profileImageUrl}
+          name={member.name}
+          size="md"
+          className="flex-shrink-0"
+        />
+        <div className="flex flex-1 flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-lg font-semibold text-slate-900">
+              {member.name}
+              {member.isSelf ? (
+                <span className="ml-2 text-xs font-normal text-slate-400">（あなた）</span>
+              ) : null}
+            </p>
+            <div className="flex items-center gap-2">
+              {member.isSelf ? (
+                <span className="rounded-full bg-brand/10 px-3 py-1 text-xs text-brand">自分です</span>
+              ) : null}
+              {canRemove && onRemove ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full border border-red-200 bg-red-50 px-4 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                  onClick={() => setConfirming(true)}
+                >
+                  削除
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          <FavoriteMealsList meals={member.favoriteMeals} highlightMeals={myFavoriteMeals} />
         </div>
       </div>
-      <FavoriteMealsList meals={member.favoriteMeals} highlightMeals={myFavoriteMeals} />
       {confirming && canRemove && onRemove ? (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
