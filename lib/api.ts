@@ -84,6 +84,7 @@ export type GroupMealParticipant = {
   status: GroupMealParticipantStatus;
   name: string;
   favoriteMeals: string[];
+  profileImageUrl?: string | null;
 };
 
 export type GroupMeal = {
@@ -97,6 +98,7 @@ export type GroupMeal = {
   host: {
     userId: string;
     name: string;
+    profileImageUrl?: string | null;
   };
   joinedCount: number;
   remainingSlots: number;
@@ -108,6 +110,7 @@ export type GroupMealCandidate = {
   userId: string;
   name: string;
   favoriteMeals: string[];
+  profileImageUrl?: string | null;
   isAvailableForSlot: boolean;
 };
 

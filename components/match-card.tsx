@@ -1,11 +1,11 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Match } from '@/lib/types';
+import { MatchSummary } from '@/lib/types';
 import { FavoriteMealsList } from './favorite-meals-list';
 
 interface Props {
-  match: Match;
+  match: MatchSummary;
 }
 
 export function MatchCard({ match }: Props) {

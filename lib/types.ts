@@ -9,7 +9,7 @@ export type Profile = {
   id: string;
   name: string;
   favoriteMeals: string[];
-  profileImageUrl?: string | null; // 👈 追加
+  profileImageUrl?: string | null;
 };
 
 export type CommunityStatus = 'UNAPPLIED' | 'PENDING' | 'APPROVED';
@@ -18,6 +18,7 @@ export type Member = {
   id: string;
   name: string;
   favoriteMeals: string[];
+  profileImageUrl?: string | null;
   isSelf?: boolean;
 };
 
@@ -27,6 +28,7 @@ export type MemberRelationship = {
   id: string;
   name: string;
   favoriteMeals: string[];
+  profileImageUrl?: string | null;
   targetUserId?: string;
   partnerAnswer?: PartnerAnswer;
   canToggleToYes?: boolean;
@@ -34,24 +36,32 @@ export type MemberRelationship = {
   matchedAt?: string | null;
 };
 
+export type RelationshipCard = MemberRelationship;
+
 export type MemberRelationshipsResponse = {
   matches?: MemberRelationship[];
   awaitingResponse?: MemberRelationship[];
   rejected?: MemberRelationship[];
 };
 
-export type Match = {
+export type MatchSummary = {
   id: string;
   partnerName: string;
   partnerFavoriteMeals: string[];
+  profileImageUrl?: string | null;
   matchedAt: string;
 };
 
-export type MatchCandidate = {
+export type Match = MatchSummary;
+
+export type LikeCandidate = {
   id: string;
   name: string;
   favoriteMeals: string[];
+  profileImageUrl?: string | null;
 };
+
+export type MatchCandidate = LikeCandidate;
 
 export type JoinRequest = {
   id: string;
@@ -59,6 +69,10 @@ export type JoinRequest = {
   email: string;
   requestedAt: string;
 };
+
+export type GroupMealParticipant = import('@/lib/api').GroupMealParticipant;
+export type GroupMealHost = import('@/lib/api').GroupMeal['host'];
+export type GroupMealInviteCandidate = import('@/lib/api').GroupMealCandidate;
 
 export type Weekday = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
 export type TimeSlot = 'DAY' | 'NIGHT';

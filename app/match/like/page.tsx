@@ -7,10 +7,11 @@ import { FavoriteMealsList } from "@/components/favorite-meals-list";
 import { ErrorBanner } from "@/components/error-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { useAuth } from "@/context/auth-context";
 import { ApiError, apiFetch } from "@/lib/api";
 import { DEV_RESET_LIKE_ENDPOINT, triggerDevResetLikes } from "@/lib/dev-tools";
-import { MatchCandidate } from "@/lib/types";
+import { LikeCandidate } from "@/lib/types";
 
 export default function LikePage() {
   return (
@@ -28,7 +29,7 @@ function LikeContent() {
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [isResettingLikes, setIsResettingLikes] = useState(false);
 
-  type NextCandidateResponse = { candidate: MatchCandidate | null };
+  type NextCandidateResponse = { candidate: LikeCandidate | null };
 
   const { data: candidateResponse, isPending } = useQuery<NextCandidateResponse>({
     queryKey: ["like-candidate", token, refreshIndex],
@@ -126,6 +127,12 @@ function LikeContent() {
             <p className="text-sm uppercase tracking-[0.5em] text-slate-400">
               M E M B E R
             </p>
+            <ProfileAvatar
+              imageUrl={candidate.profileImageUrl}
+              name={candidate.name}
+              size="lg"
+              className="mx-auto"
+            />
             <h2 className="text-3xl font-semibold text-slate-900">
               {candidate.name}
             </h2>
