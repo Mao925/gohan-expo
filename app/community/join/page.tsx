@@ -169,7 +169,7 @@ export default function CommunityJoinPage() {
                 <Input placeholder="KING" {...form.register('communityName')} />
               </Field>
               <Field label="8桁のコミュニティコード" error={form.formState.errors.communityCode?.message}>
-                <Input placeholder="ABCD1234" maxLength={8} {...form.register('communityCode')} />
+                <Input placeholder="KING1234" maxLength={8} {...form.register('communityCode')} />
               </Field>
               <Button type="submit" disabled={joinMutation.isPending || statusFetching} className="w-full">
                 {joinMutation.isPending ? '送信中...' : showForm ? '参加申請する' : 'コードを更新する'}
