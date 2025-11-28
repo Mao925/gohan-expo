@@ -16,12 +16,26 @@ export default function LineCallbackPage() {
   const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState('LINEアカウントでの認証を確認しています...');
 
-  const token = searchParams?.get('token');
-  const isNewUser = searchParams?.get('newUser')?.toLowerCase() === 'true';
+  const token = searchParams.get('token');
+  const newUserParam = searchParams.get('newUser') ?? '';
+  const isNewUser = newUserParam.toLowerCase() === 'true';
 
-  const destination = useMemo(() => (isNewUser ? '/profile' : '/community/join'), [isNewUser]);
+  // ★ここが「オンボーディングに飛ばす」ポイント
+  //   - プロフィール設定画面がオンボなら '/profile' のままでOK
+  //   - 専用のオンボ画面があるなら '/onboarding' などに変更
+  const destination = useMemo(
+    () => (isNewUser ? '/profile' : '/community/join'),
+    [isNewUser]
+  );
 
   useEffect(() => {
+    console.log('[LINE CALLBACK] token, newUserParam, isNewUser', {
+      token,
+      newUserParam,
+      isNewUser,
+      destination,
+    });
+
     if (!token) {
       setStatus('error');
       setMessage('認証情報が見つかりませんでした。ログインからやり直してください。');
@@ -44,7 +58,7 @@ export default function LineCallbackPage() {
         setMessage('ログインに失敗しました。お手数ですが再度お試しください。');
       }
     })();
-  }, [destination, isNewUser, loginWithToken, router, token]);
+  }, [destination, isNewUser, loginWithToken, router, token, newUserParam]);
 
   return (
     <Card className="mx-auto max-w-md space-y-4 text-center">
@@ -55,7 +69,9 @@ export default function LineCallbackPage() {
       ) : null}
       {status === 'success' ? (
         <div className="space-y-3">
-          <p className="text-sm text-slate-500">自動でページが切り替わらない場合はこちらを押してください。</p>
+          <p className="text-sm text-slate-500">
+            自動でページが切り替わらない場合はこちらを押してください。
+          </p>
           <Button asChild className="w-full">
             <Link href={destination}>次へ進む</Link>
           </Button>
