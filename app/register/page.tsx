@@ -51,8 +51,9 @@ export default function RegisterPage() {
   };
 
   const handleLineRegister = () => {
-    const url = new URL('/api/auth/line/login', API_BASE_URL).toString();
-    window.location.href = url;
+    const url = new URL('/api/auth/line/login', API_BASE_URL);
+    url.searchParams.set('mode', 'register'); // ★ 新規登録モード
+    window.location.href = url.toString();
   };
 
   return (

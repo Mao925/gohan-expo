@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -16,7 +16,8 @@ import { ApiError, API_BASE_URL, SERVER_UNAVAILABLE_MESSAGE } from '@/lib/api';
 
 const seedEmail = process.env.NEXT_PUBLIC_SEED_EMAIL;
 const seedPassword = process.env.NEXT_PUBLIC_SEED_PASSWORD;
-const showSeedInfo = process.env.NODE_ENV !== 'production' && Boolean(seedEmail && seedPassword);
+const showSeedInfo =
+  process.env.NODE_ENV !== 'production' && Boolean(seedEmail && seedPassword);
 
 const schema = z.object({
   email: z.string().email('メールアドレスの形式が正しくありません'),
@@ -28,7 +29,16 @@ type FormValues = z.infer<typeof schema>;
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const lineError = searchParams.get('lineError');
+
+  const initialError: string | null =
+    lineError === 'NOT_REGISTERED'
+      ? 'このLINEアカウントではまだ新規登録が完了していません。「新規登録」からアカウントを作成してください。'
+      : null;
+
+  const [error, setError] = useState<string | null>(initialError);
+
   const {
     register,
     handleSubmit,
@@ -56,8 +66,9 @@ export default function LoginPage() {
   };
 
   const handleLineLogin = () => {
-    const url = new URL('/api/auth/line/login', API_BASE_URL).toString();
-    window.location.href = url;
+    const url = new URL('/api/auth/line/login', API_BASE_URL);
+    url.searchParams.set('mode', 'login'); // ★ ログインモード
+    window.location.href = url.toString();
   };
 
   return (
