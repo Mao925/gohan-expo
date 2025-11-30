@@ -214,6 +214,16 @@ export async function fetchMatches(token?: string | null): Promise<MatchSummary[
   return apiFetch<MatchSummary[]>('/api/matches', { token });
 }
 
+export type AvailabilityStatusSummary = {
+  availableCount: number;
+  required: number;
+  meetsRequirement: boolean;
+};
+
+export async function fetchAvailabilityStatus(): Promise<AvailabilityStatusSummary> {
+  return apiFetch<AvailabilityStatusSummary>('/api/availability/status');
+}
+
 export async function updateLikeChoice(
   targetUserId: string,
   choice: 'YES' | 'NO'

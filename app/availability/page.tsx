@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { MatchedMembersSection } from '@/components/availability/matched-members-section';
 import { PairScheduleDialog } from '@/components/availability/pair-schedule-dialog';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Card } from '@/components/ui/card';
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, ApiError, fetchAvailabilityStatus, AvailabilityStatusSummary } from '@/lib/api';
 import { createDefaultGrid, gridToSlots, slotsToGrid, TIMESLOTS, WEEKDAYS } from '@/lib/availability';
 import { useAuth } from '@/context/auth-context';
 import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, MemberRelationship, Profile, TimeSlot, Weekday } from '@/lib/types';
@@ -74,6 +74,10 @@ function AvailabilityContent() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isForbidden, setIsForbidden] = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatusSummary | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
 
   const { data: profileData } = useQuery<Profile>({
     queryKey: ['profile', token],
@@ -106,12 +110,49 @@ function AvailabilityContent() {
     enabled: Boolean(token && !user?.isAdmin)
   });
 
+  const loadAvailabilityStatus = useCallback(async () => {
+    setStatusLoading(true);
+    setStatusError(null);
+    try {
+      const data = await fetchAvailabilityStatus();
+      if (isMountedRef.current) {
+        setAvailabilityStatus(data);
+      }
+    } catch (err) {
+      console.error('Failed to load availability status', err);
+      if (isMountedRef.current) {
+        setAvailabilityStatus(null);
+        setStatusError('空き日程の情報を取得できませんでした。');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setStatusLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (data) {
       setGrid(slotsToGrid(data));
       setSuccessMessage(null);
     }
   }, [data]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      setAvailabilityStatus(null);
+      setStatusLoading(false);
+      setStatusError(null);
+      return;
+    }
+    loadAvailabilityStatus();
+  }, [token, loadAvailabilityStatus]);
 
   const mutation = useMutation<AvailabilitySlotDto[], ApiError, AvailabilitySlotDto[], { previousGrid: AvailabilityGrid }>({
     mutationFn: (payload) => apiFetch('/api/availability', { method: 'PUT', data: payload, token }),
@@ -125,6 +166,7 @@ function AvailabilityContent() {
       setIsForbidden(false);
       setGrid(slotsToGrid(slots));
       setSuccessMessage('保存しました');
+      loadAvailabilityStatus();
     },
     onError: (err, _variables, context) => {
       if (context?.previousGrid) {
@@ -260,7 +302,54 @@ function AvailabilityContent() {
         </Card>
       )}
 
-      <MatchedMembersSection onSelectMember={handleOpenDialog} highlightMeals={profileData?.favoriteMeals} />
+      <section className="mt-10 space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">マッチしたメンバー</h2>
+          <p className="text-xs text-slate-500">GO / STAY の予定を確認できます。</p>
+        </div>
+
+        {statusError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+            {statusError}
+          </div>
+        )}
+
+        {!statusLoading && availabilityStatus && !availabilityStatus.meetsRequirement && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold mb-1">まだマッチ相手を確認できません</p>
+            <p className="mb-1">
+              現在、空いている日程は
+              <span className="mx-1 font-semibold">{availabilityStatus.availableCount}件</span>
+              です。
+            </p>
+            <p>
+              マッチ相手を確認するには、空き日程を少なくとも
+              <span className="mx-1 font-semibold">{availabilityStatus.required}件</span>
+              登録してください。
+            </p>
+          </div>
+        )}
+
+        {statusLoading ? (
+          <Card className="bg-white/70 p-4 text-sm text-slate-500">
+            マッチしたメンバーの状況を確認しています...
+          </Card>
+        ) : availabilityStatus && availabilityStatus.meetsRequirement ? (
+          <MatchedMembersSection
+            onSelectMember={handleOpenDialog}
+            highlightMeals={profileData?.favoriteMeals}
+            showHeader={false}
+          />
+        ) : (
+          !statusLoading &&
+          availabilityStatus &&
+          !availabilityStatus.meetsRequirement && (
+            <div className="text-xs text-slate-500">
+              まずは上の空き日程から、GO飯できる枠を増やしてみてください。
+            </div>
+          )
+        )}
+      </section>
 
       <PairScheduleDialog
         open={dialogOpen}

@@ -14,9 +14,14 @@ import { MemberRelationship, MemberRelationshipsResponse } from '@/lib/types';
 type MatchedMembersSectionProps = {
   onSelectMember: (member: MemberRelationship) => void;
   highlightMeals?: string[];
+  showHeader?: boolean;
 };
 
-export function MatchedMembersSection({ onSelectMember, highlightMeals }: MatchedMembersSectionProps) {
+export function MatchedMembersSection({
+  onSelectMember,
+  highlightMeals,
+  showHeader = true
+}: MatchedMembersSectionProps) {
   const { token, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
@@ -38,10 +43,12 @@ export function MatchedMembersSection({ onSelectMember, highlightMeals }: Matche
 
   return (
     <section className="mt-10 space-y-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">マッチしたメンバー</h2>
-        <p className="text-xs text-slate-500">GO / STAY の予定を確認できます。</p>
-      </div>
+      {showHeader && (
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">マッチしたメンバー</h2>
+          <p className="text-xs text-slate-500">GO / STAY の予定を確認できます。</p>
+        </div>
+      )}
 
       <ErrorBanner message={error} />
 
