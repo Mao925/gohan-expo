@@ -1,18 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
-import { FavoriteMealsList } from '@/components/favorite-meals-list';
-import { ProfileAvatar } from '@/components/profile-avatar';
-import { Badge } from '@/components/ui/badge';
+import { MemberCard } from '@/components/member-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
-import { ApiError, fetchMembers, updateLikeChoice } from '@/lib/api';
+import { useAuth } from '@/context/auth-context';
+import { ApiError, deleteMember, fetchMembers, updateLikeChoice } from '@/lib/api';
 import { Member } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 type LikeChoice = 'YES' | 'NO';
 type UpdatingState = { memberId: string; choice: LikeChoice } | null;
@@ -26,9 +24,11 @@ export default function MembersPage() {
 }
 
 function MembersContent() {
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.isAdmin);
   const { data, isPending, error, refetch } = useQuery<Member[]>({
     queryKey: ['members'],
-    queryFn: fetchMembers
+    queryFn: fetchMembers,
   });
   const [members, setMembers] = useState<Member[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -46,25 +46,52 @@ function MembersContent() {
     apiErrorMessage === 'Missing Authorization header' ? 'ログインし直してください' : apiErrorMessage;
   const errorMessage = actionError ?? friendlyApiError;
 
-  const handleChoice = useCallback(async (member: Member, choice: LikeChoice) => {
-    if (member.myLikeStatus === choice) return;
+  const handleToggleLike = async (memberId: string, nextStatus: LikeChoice) => {
+    const targetMember = members.find((item) => item.id === memberId);
+    if (!targetMember) return;
+    if (targetMember.myLikeStatus === nextStatus) return;
+    if (targetMember.isMutualLike && nextStatus === 'NO') return;
+
+    const previousStatus = targetMember.myLikeStatus ?? 'NO';
     setActionError(null);
-    setUpdatingState({ memberId: member.id, choice });
+    setUpdatingState({ memberId, choice: nextStatus });
+    setMembers((prev) =>
+      prev.map((item) =>
+        item.id === memberId ? { ...item, myLikeStatus: nextStatus } : item
+      )
+    );
+
     try {
-      const response = await updateLikeChoice(member.id, choice);
+      const response = await updateLikeChoice(memberId, nextStatus);
       setMembers((prev) =>
         prev.map((item) =>
-          item.id === member.id
+          item.id === memberId
             ? { ...item, myLikeStatus: response.myLikeStatus, isMutualLike: response.isMutualLike }
             : item
         )
       );
     } catch (err: any) {
       setActionError(err?.message ?? '回答の更新に失敗しました');
+      setMembers((prev) =>
+        prev.map((item) =>
+          item.id === memberId ? { ...item, myLikeStatus: previousStatus } : item
+        )
+      );
     } finally {
       setUpdatingState(null);
     }
-  }, []);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('このユーザーを削除しますか？')) return;
+    setActionError(null);
+    try {
+      await deleteMember(userId);
+      setMembers((prev) => prev.filter((member) => member.id !== userId));
+    } catch (err: any) {
+      setActionError(err?.message ?? 'ユーザーの削除に失敗しました');
+    }
+  };
 
   const handleRefresh = () => {
     setActionError(null);
@@ -108,94 +135,17 @@ function MembersContent() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {members.map((member) => (
-            <MemberRow
+            <MemberCard
               key={member.id}
               member={member}
-              onChoice={handleChoice}
-              updatingState={updatingState}
+              isAdmin={isAdmin}
+              onToggleLike={(nextStatus) => handleToggleLike(member.id, nextStatus)}
+              onDeleteUser={isAdmin ? () => handleDeleteUser(member.id) : undefined}
+              isUpdating={updatingState?.memberId === member.id}
             />
           ))}
         </div>
       )}
     </div>
-  );
-}
-
-type MemberRowProps = {
-  member: Member;
-  onChoice: (member: Member, choice: LikeChoice) => void;
-  updatingState: UpdatingState;
-};
-
-function MemberRow({ member, onChoice, updatingState }: MemberRowProps) {
-  const isUpdatingMember = updatingState?.memberId === member.id;
-  const updatingChoice = isUpdatingMember ? updatingState?.choice : null;
-  const isYesActive = member.myLikeStatus === 'YES';
-  const isNoActive = member.myLikeStatus === 'NO';
-  const showMatchHint = member.isMutualLike;
-
-  return (
-    <Card className="border-orange-100">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <ProfileAvatar imageUrl={member.profileImageUrl ?? undefined} name={member.name ?? '名前未設定'} size="md" />
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <p className="text-lg font-semibold text-slate-900">{member.name ?? '名前未設定'}</p>
-                {member.isMutualLike ? <Badge variant="secondary">マッチ済み</Badge> : null}
-              </div>
-              <FavoriteMealsList meals={member.favoriteMeals} variant="pill" />
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className={cn(
-                  'rounded-full px-4 py-1 text-xs font-semibold shadow-sm transition',
-                  isYesActive
-                    ? 'border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                )}
-                onClick={() => onChoice(member, 'YES')}
-                disabled={isUpdatingMember}
-              >
-                {isUpdatingMember && updatingChoice === 'YES' ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  'YES'
-                )}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className={cn(
-                  'rounded-full px-4 py-1 text-xs font-semibold shadow-sm transition',
-                  isNoActive
-                    ? 'border border-red-400 bg-red-400 text-white hover:bg-red-500'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                )}
-                onClick={() => onChoice(member, 'NO')}
-                disabled={isUpdatingMember || member.isMutualLike}
-                title={member.isMutualLike ? 'マッチ済みの相手にはNOを選べません' : undefined}
-              >
-                {isUpdatingMember && updatingChoice === 'NO' ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  'NO'
-                )}
-              </Button>
-            </div>
-            {showMatchHint ? (
-              <p className="text-xs text-slate-500">マッチ済みのため NO を選択できません</p>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </Card>
   );
 }

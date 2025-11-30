@@ -21,11 +21,12 @@ type NavItem = {
   href: string;
   label: string;
   icon?: ComponentType<{ className?: string }>;
+  showInShell?: boolean;
 };
 
 const COMMON_NAV_ITEMS: NavItem[] = [
   { href: "/members", label: "メンバー", icon: Users },
-  { href: "/match/like", label: "ふたりでGO飯", icon: HeartHandshake },
+  { href: "/match/like", label: "ふたりでGO飯", icon: HeartHandshake, showInShell: false },
   { href: "/availability", label: "日程調整", icon: CalendarDays },
   { href: "/group-meals", label: "みんなでGO飯", icon: UtensilsCrossed },
   { href: "/profile", label: "プロフィール", icon: UserRound },
@@ -47,7 +48,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const isAdmin = Boolean(user?.isAdmin || communityStatus?.isAdmin);
 
-  const navItems: NavItem[] = isAdmin
+  const baseNavItems: NavItem[] = isAdmin
     ? [
         // 管理者だけコミュニティ管理や承認タブを見せる
         ...COMMON_NAV_ITEMS.filter((item) => item.href !== "/availability"),
@@ -55,6 +56,8 @@ export function AppShell({ children }: AppShellProps) {
         { href: "/admin", label: "承認待ち", icon: ShieldCheck },
       ]
     : COMMON_NAV_ITEMS;
+
+  const navItems = baseNavItems.filter((item) => item.showInShell !== false);
 
   const mobileNavItems: NavItem[] = navItems;
 
