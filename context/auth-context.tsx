@@ -2,9 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { getToken, storeToken } from '@/lib/token-storage';
 import { User } from '@/lib/types';
-
-const TOKEN_STORAGE_KEY = 'gohan_token';
 
 type Credentials = {
   email: string;
@@ -40,12 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const persistToken = useCallback((nextToken: string | null) => {
-    if (typeof window === 'undefined') return;
-    if (nextToken) {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
-    } else {
-      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-    }
+    storeToken(nextToken);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -65,8 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token, persistToken]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    const storedToken = getToken();
     if (!storedToken) {
       setIsLoading(false);
       return;
@@ -107,11 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithToken = useCallback(
     async (nextToken: string) => {
-      setToken(nextToken);
-      persistToken(nextToken);
       try {
         const me = await apiFetch<User>('/api/auth/me', { token: nextToken });
-        setUser(me);
+        handleAuthSuccess({ token: nextToken, user: me });
       } catch (error) {
         setToken(null);
         persistToken(null);
@@ -119,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
     },
-    [persistToken]
+    [handleAuthSuccess, persistToken]
   );
 
   const register = useCallback(

@@ -1,3 +1,5 @@
+import { getToken } from '@/lib/token-storage';
+
 export type ApiError = {
   message: string;
   status?: number;
@@ -19,14 +21,15 @@ const SERVER_UNAVAILABLE_MESSAGE = '現在サーバー側で問題が発生し�
 
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = 'GET', data, token, headers: customHeaders } = options;
+  const resolvedToken = token !== undefined ? token : getToken();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(customHeaders ?? {})
   };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (resolvedToken) {
+    headers.Authorization = `Bearer ${resolvedToken}`;
   }
 
   const normalizedPath = path.replace(/^\/+/, '');
