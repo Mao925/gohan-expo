@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/auth-context';
-import { ApiError, deleteMember, fetchMembers, updateLikeChoice } from '@/lib/api';
+import { ApiError, deleteMember, fetchMembers, toggleLike, type LikeToggleResponse } from '@/lib/api';
 import { Member } from '@/lib/types';
 
 type LikeChoice = 'YES' | 'NO';
@@ -46,27 +46,41 @@ function MembersContent() {
     apiErrorMessage === 'Missing Authorization header' ? 'ログインし直してください' : apiErrorMessage;
   const errorMessage = actionError ?? friendlyApiError;
 
-  const handleToggleLike = async (memberId: string, nextStatus: LikeChoice) => {
+  const handleToggleLike = async (
+    memberId: string,
+    currentStatus: LikeChoice | 'NONE'
+  ) => {
     const targetMember = members.find((item) => item.id === memberId);
     if (!targetMember) return;
-    if (targetMember.myLikeStatus === nextStatus) return;
-    if (targetMember.isMutualLike && nextStatus === 'NO') return;
 
-    const previousStatus = targetMember.myLikeStatus ?? 'NO';
+    const nextChoice: LikeChoice = currentStatus === 'YES' ? 'NO' : 'YES';
+    const previousStatus = targetMember.myLikeStatus ?? 'NONE';
+    const previousIsMutual = targetMember.isMutualLike;
+
     setActionError(null);
-    setUpdatingState({ memberId, choice: nextStatus });
+    setUpdatingState({ memberId, choice: nextChoice });
     setMembers((prev) =>
       prev.map((item) =>
-        item.id === memberId ? { ...item, myLikeStatus: nextStatus } : item
+        item.id === memberId
+          ? {
+              ...item,
+              myLikeStatus: nextChoice,
+              isMutualLike: nextChoice === 'YES' ? item.isMutualLike : false,
+            }
+          : item
       )
     );
 
     try {
-      const response = await updateLikeChoice(memberId, nextStatus);
+      const response: LikeToggleResponse = await toggleLike(memberId, nextChoice);
       setMembers((prev) =>
         prev.map((item) =>
-          item.id === memberId
-            ? { ...item, myLikeStatus: response.myLikeStatus, isMutualLike: response.isMutualLike }
+          item.id === response.targetUserId
+            ? {
+                ...item,
+                myLikeStatus: response.status,
+                isMutualLike: response.isMutual,
+              }
             : item
         )
       );
@@ -74,7 +88,13 @@ function MembersContent() {
       setActionError(err?.message ?? '回答の更新に失敗しました');
       setMembers((prev) =>
         prev.map((item) =>
-          item.id === memberId ? { ...item, myLikeStatus: previousStatus } : item
+          item.id === memberId
+            ? {
+                ...item,
+                myLikeStatus: previousStatus,
+                isMutualLike: previousIsMutual,
+              }
+            : item
         )
       );
     } finally {
@@ -139,7 +159,7 @@ function MembersContent() {
               key={member.id}
               member={member}
               isAdmin={isAdmin}
-              onToggleLike={(nextStatus) => handleToggleLike(member.id, nextStatus)}
+              onToggleLike={handleToggleLike}
               onDeleteUser={isAdmin ? () => handleDeleteUser(member.id) : undefined}
               isUpdating={updatingState?.memberId === member.id}
             />

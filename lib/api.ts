@@ -224,17 +224,20 @@ export async function fetchAvailabilityStatus(): Promise<AvailabilityStatusSumma
   return apiFetch<AvailabilityStatusSummary>('/api/availability/status');
 }
 
-export async function updateLikeChoice(
+export type LikeToggleResponse = {
+  targetUserId: string;
+  status: 'YES' | 'NO';
+  isMutual: boolean;
+};
+
+export async function toggleLike(
   targetUserId: string,
   choice: 'YES' | 'NO'
-): Promise<{ targetUserId: string; myLikeStatus: 'YES' | 'NO'; isMutualLike: boolean }> {
-  return apiFetch<{ targetUserId: string; myLikeStatus: 'YES' | 'NO'; isMutualLike: boolean }>(
-    `/api/likes/${targetUserId}`,
-    {
-      method: 'PUT',
-      data: { choice }
-    }
-  );
+): Promise<LikeToggleResponse> {
+  return apiFetch<LikeToggleResponse>(`/api/likes/${targetUserId}`, {
+    method: 'PUT',
+    data: { choice }
+  });
 }
 
 export async function deleteMember(userId: string, token?: string | null): Promise<void> {
