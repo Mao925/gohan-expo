@@ -1,11 +1,21 @@
 import { getToken } from '@/lib/token-storage';
+import type { MatchSummary } from '@/lib/types';
 
-export type ApiError = {
-  message: string;
-  status?: number;
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  data: any;
   isServerError?: boolean;
   isNetworkError?: boolean;
-};
+
+  constructor(message: string, status: number, code?: string, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.data = data;
+  }
+}
 
 export type ApiRequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -45,19 +55,18 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
       credentials: 'include'
     });
   } catch (error) {
-    const networkError: ApiError = {
-      message: SERVER_UNAVAILABLE_MESSAGE,
-      isNetworkError: true,
-      isServerError: true
-    };
-    throw networkError;
+    const apiError = new ApiError(SERVER_UNAVAILABLE_MESSAGE, 0);
+    apiError.isNetworkError = true;
+    apiError.isServerError = true;
+    throw apiError;
   }
 
   if (!response.ok) {
     const isServerError = response.status >= 500;
     let message = isServerError ? SERVER_UNAVAILABLE_MESSAGE : 'サーバーでエラーが発生しました';
+    let errorBody: any = null;
     try {
-      const errorBody = await response.json();
+      errorBody = await response.json();
       message = errorBody?.message ?? message;
       if (isServerError) {
         message = SERVER_UNAVAILABLE_MESSAGE;
@@ -65,8 +74,9 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     } catch (error) {
       // ignore
     }
-    const error: ApiError = { message, status: response.status, isServerError };
-    throw error;
+    const apiError = new ApiError(message, response.status, errorBody?.code, errorBody);
+    apiError.isServerError = isServerError;
+    throw apiError;
   }
 
   if (response.status === 204) {
@@ -198,6 +208,10 @@ export type Member = {
 export async function fetchMembers(): Promise<Member[]> {
   const data = await apiFetch<{ members: Member[] }>('/api/members');
   return data.members;
+}
+
+export async function fetchMatches(token?: string | null): Promise<MatchSummary[]> {
+  return apiFetch<MatchSummary[]>('/api/matches', { token });
 }
 
 export async function updateLikeChoice(
