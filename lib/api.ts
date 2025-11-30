@@ -183,4 +183,31 @@ export async function deleteGroupMeal(groupMealId: string, token?: string | null
   });
 }
 
+export type Member = {
+  id: string;
+  name: string | null;
+  favoriteMeals: string[];
+  profileImageUrl: string | null;
+  myLikeStatus: 'YES' | 'NO';
+  isMutualLike: boolean;
+};
+
+export async function fetchMembers(): Promise<Member[]> {
+  const data = await apiFetch<{ members: Member[] }>('/api/members');
+  return data.members;
+}
+
+export async function updateLikeChoice(
+  targetUserId: string,
+  choice: 'YES' | 'NO'
+): Promise<{ targetUserId: string; myLikeStatus: 'YES' | 'NO'; isMutualLike: boolean }> {
+  return apiFetch<{ targetUserId: string; myLikeStatus: 'YES' | 'NO'; isMutualLike: boolean }>(
+    `/api/likes/${targetUserId}`,
+    {
+      method: 'PUT',
+      data: { choice }
+    }
+  );
+}
+
 export { API_BASE_URL, SERVER_UNAVAILABLE_MESSAGE };
