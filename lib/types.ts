@@ -14,11 +14,7 @@ export type Profile = {
 
 export type CommunityStatus = 'UNAPPLIED' | 'PENDING' | 'APPROVED';
 
-export type Member = {
-  id: string;
-  name: string;
-  favoriteMeals: string[];
-  profileImageUrl?: string | null;
+export type Member = import('@/lib/api').Member & {
   isSelf?: boolean;
 };
 

@@ -23,8 +23,8 @@ export function MemberCard({ member, onRemove, canRemove, myFavoriteMeals }: Pro
     <Card className={cn('relative border-orange-100', member.isSelf && 'border-brand/50')}>
       <div className="flex items-start gap-3">
         <ProfileAvatar
-          imageUrl={member.profileImageUrl}
-          name={member.name}
+          imageUrl={member.profileImageUrl ?? undefined}
+          name={member.name ?? undefined}
           size="md"
           className="flex-shrink-0"
         />
