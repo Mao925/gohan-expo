@@ -50,9 +50,9 @@ export function MemberCard({
             {isAdmin ? (
               <Button
                 type="button"
-                variant="destructive"
+                variant="secondary"
                 size="sm"
-                className="rounded-full px-4 py-1 text-xs font-semibold"
+                className="rounded-full px-4 py-1 text-xs font-semibold bg-red-500 text-white hover:bg-red-600"
                 onClick={onDeleteUser}
               >
                 ユーザー削除
