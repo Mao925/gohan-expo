@@ -191,7 +191,7 @@ export type Member = {
   name: string | null;
   favoriteMeals: string[];
   profileImageUrl: string | null;
-  myLikeStatus: 'YES' | 'NO';
+  myLikeStatus: 'YES' | 'NO' | 'NONE';
   isMutualLike: boolean;
 };
 
@@ -211,6 +211,13 @@ export async function updateLikeChoice(
       data: { choice }
     }
   );
+}
+
+export async function deleteMember(userId: string, token?: string | null): Promise<void> {
+  await apiFetch<void>(`/api/admin/members/${userId}`, {
+    method: 'DELETE',
+    token
+  });
 }
 
 export { API_BASE_URL, SERVER_UNAVAILABLE_MESSAGE };
