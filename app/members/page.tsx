@@ -41,7 +41,10 @@ function MembersContent() {
   }, [data]);
 
   const isInitialLoading = isPending && members.length === 0;
-  const errorMessage = actionError ?? (error as ApiError | undefined)?.message ?? null;
+  const apiErrorMessage = (error as ApiError | undefined)?.message ?? null;
+  const friendlyApiError =
+    apiErrorMessage === 'Missing Authorization header' ? 'ログインし直してください' : apiErrorMessage;
+  const errorMessage = actionError ?? friendlyApiError;
 
   const handleChoice = useCallback(async (member: Member, choice: LikeChoice) => {
     if (member.myLikeStatus === choice) return;
