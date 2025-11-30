@@ -8,12 +8,10 @@ import { FavoriteMealsList } from './favorite-meals-list';
 import { LikeToggleButton } from './like-toggle-button';
 import { Member } from '@/lib/types';
 
-type LikeChoice = 'YES' | 'NO';
-
 type MemberCardProps = {
   member: Member;
   isAdmin?: boolean;
-  onToggleLike?: (nextStatus: LikeChoice) => void;
+  onToggleLike?: (memberId: string, currentStatus: 'YES' | 'NO' | 'NONE') => void;
   onDeleteUser?: () => void;
   isUpdating?: boolean;
 };
@@ -25,8 +23,7 @@ export function MemberCard({
   onDeleteUser,
   isUpdating,
 }: MemberCardProps) {
-  const status = member.myLikeStatus ?? 'NO';
-  const disableToggle = member.isMutualLike;
+  const effectiveStatus: 'YES' | 'NO' | 'NONE' = member.myLikeStatus ?? 'NONE';
 
   return (
     <Card className="border-orange-100">
@@ -60,14 +57,11 @@ export function MemberCard({
             ) : (
               <div className="flex flex-col items-end gap-1">
                 <LikeToggleButton
-                  status={status}
-                  onToggle={(nextStatus) => onToggleLike?.(nextStatus)}
-                  disabled={disableToggle}
+                  status={effectiveStatus}
+                  onClick={() => onToggleLike?.(member.id, effectiveStatus)}
+                  disabled={isUpdating}
                   isLoading={isUpdating}
                 />
-                {member.isMutualLike ? (
-                  <p className="text-xs text-slate-500">マッチ済みのため NO を選択できません</p>
-                ) : null}
               </div>
             )}
           </div>
