@@ -99,16 +99,18 @@ export type Profile = {
   id: string;
   userId: string;
   name?: string | null;
-  favoriteMeals: string[];
   profileImageUrl?: string | null;
+  favoriteMeals: string[];
+  ngFoods: string[];
+  areas: string[];
+  hobbies: string[];
   mainArea?: string | null;
   subAreas: string[];
   defaultBudget?: GroupMealBudget | null;
   drinkingStyle?: DrinkingStyle | null;
-  ngFoods: string[];
-  bio?: string | null;
-  mealStyle?: MealStyle | null;
+  mealStyle?: MealStyle | null; // legacy
   goMealFrequency?: GoMealFrequency | null;
+  bio?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -288,27 +290,31 @@ export async function fetchMatches(token?: string | null): Promise<MatchSummary[
   return apiFetch<MatchSummary[]>('/api/matches', { token });
 }
 
-export type UpdateProfilePayload = {
-  name: string;
-  favoriteMeals: string[];
-  mainArea?: string | null;
-  subAreas?: string[];
+export type UpdateProfileInput = {
+  name?: string;
+  profileImageUrl?: string;
+  favoriteMeals?: string[];
+  ngFoods?: string[];
+  areas?: string[];
+  hobbies?: string[];
   defaultBudget?: GroupMealBudget | null;
   drinkingStyle?: DrinkingStyle | null;
-  ngFoods?: string[];
-  bio?: string | null;
-  mealStyle?: MealStyle | null;
   goMealFrequency?: GoMealFrequency | null;
+  bio?: string | null;
+  // allow additional legacy fields for compatibility
+  mealStyle?: MealStyle | null;
+  mainArea?: string | null;
+  subAreas?: string[];
 };
 
 export async function fetchProfile(token?: string | null): Promise<Profile> {
   return apiFetch<Profile>('/api/profile', { token });
 }
 
-export async function updateProfile(payload: UpdateProfilePayload, token?: string | null): Promise<Profile> {
+export async function updateProfile(input: UpdateProfileInput, token?: string | null): Promise<Profile> {
   return apiFetch<Profile>('/api/profile', {
     method: 'PUT',
-    data: payload,
+    data: input,
     token
   });
 }
