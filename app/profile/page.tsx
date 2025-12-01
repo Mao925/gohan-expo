@@ -387,8 +387,8 @@ function ProfileContent() {
               </div>
             </Field>
 
-            <Button type="submit" className="w-full" disabled={mutation.isLoading}>
-              {mutation.isLoading ? '保存中...' : '保存する'}
+            <Button type="submit" className="w-full" disabled={mutation.status === 'pending'}>
+              {mutation.status === 'pending' ? '保存中...' : '保存する'}
             </Button>
           </form>
         )}
