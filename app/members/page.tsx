@@ -1,18 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { CommunityGate } from '@/components/community/community-gate';
-import { ErrorBanner } from '@/components/error-banner';
-import { MemberCard } from '@/components/member-card';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/context/auth-context';
-import { ApiError, deleteMember, fetchMembers, toggleLike, type LikeToggleResponse } from '@/lib/api';
-import { Member } from '@/lib/types';
+import { useEffect, useState } from "react";
+import { Loader2, Heart } from "lucide-react";
+import { CommunityGate } from "@/components/community/community-gate";
+import { ErrorBanner } from "@/components/error-banner";
+import { MemberCard } from "@/components/member-card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/context/auth-context";
+import {
+  ApiError,
+  deleteMember,
+  fetchMembers,
+  toggleLike,
+  type LikeToggleResponse,
+} from "@/lib/api";
+import { Member } from "@/lib/types";
 
-type LikeChoice = 'YES' | 'NO';
+type LikeChoice = "YES" | "NO";
 type UpdatingState = { memberId: string; choice: LikeChoice } | null;
 
 export default function MembersPage() {
@@ -27,7 +33,7 @@ function MembersContent() {
   const { user } = useAuth();
   const isAdmin = Boolean(user?.isAdmin);
   const { data, isPending, error, refetch } = useQuery<Member[]>({
-    queryKey: ['members'],
+    queryKey: ["members"],
     queryFn: fetchMembers,
   });
   const [members, setMembers] = useState<Member[]>([]);
@@ -43,18 +49,20 @@ function MembersContent() {
   const isInitialLoading = isPending && members.length === 0;
   const apiErrorMessage = (error as ApiError | undefined)?.message ?? null;
   const friendlyApiError =
-    apiErrorMessage === 'Missing Authorization header' ? 'ログインし直してください' : apiErrorMessage;
+    apiErrorMessage === "Missing Authorization header"
+      ? "ログインし直してください"
+      : apiErrorMessage;
   const errorMessage = actionError ?? friendlyApiError;
 
   const handleToggleLike = async (
     memberId: string,
-    currentStatus: LikeChoice | 'NONE'
+    currentStatus: LikeChoice | "NONE"
   ) => {
     const targetMember = members.find((item) => item.id === memberId);
     if (!targetMember) return;
 
-    const nextChoice: LikeChoice = currentStatus === 'YES' ? 'NO' : 'YES';
-    const previousStatus = targetMember.myLikeStatus ?? 'NONE';
+    const nextChoice: LikeChoice = currentStatus === "YES" ? "NO" : "YES";
+    const previousStatus = targetMember.myLikeStatus ?? "NONE";
     const previousIsMutual = targetMember.isMutualLike;
 
     setActionError(null);
@@ -65,14 +73,17 @@ function MembersContent() {
           ? {
               ...item,
               myLikeStatus: nextChoice,
-              isMutualLike: nextChoice === 'YES' ? item.isMutualLike : false,
+              isMutualLike: nextChoice === "YES" ? item.isMutualLike : false,
             }
           : item
       )
     );
 
     try {
-      const response: LikeToggleResponse = await toggleLike(memberId, nextChoice);
+      const response: LikeToggleResponse = await toggleLike(
+        memberId,
+        nextChoice
+      );
       setMembers((prev) =>
         prev.map((item) =>
           item.id === response.targetUserId
@@ -85,7 +96,7 @@ function MembersContent() {
         )
       );
     } catch (err: any) {
-      setActionError(err?.message ?? '回答の更新に失敗しました');
+      setActionError(err?.message ?? "回答の更新に失敗しました");
       setMembers((prev) =>
         prev.map((item) =>
           item.id === memberId
@@ -103,13 +114,13 @@ function MembersContent() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('このユーザーを削除しますか？')) return;
+    if (!confirm("このユーザーを削除しますか？")) return;
     setActionError(null);
     try {
       await deleteMember(userId);
       setMembers((prev) => prev.filter((member) => member.id !== userId));
     } catch (err: any) {
-      setActionError(err?.message ?? 'ユーザーの削除に失敗しました');
+      setActionError(err?.message ?? "ユーザーの削除に失敗しました");
     }
   };
 
@@ -120,14 +131,18 @@ function MembersContent() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 md:space-y-8">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-900">承認済みメンバー</h1>
-            <p className="text-sm text-slate-500">
-              コミュニティ内の全メンバーをフラットに表示し、ここで YES / NO を切り替えられます。
-            </p>
+      <div className="flex flex-col gap-3">
+        <div className="rounded-[32px] border border-orange-100 bg-gradient-to-r from-white via-orange-50 to-white p-6 shadow-lg shadow-orange-200/40">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <Heart className="h-7 w-7 text-red-500" />
+              <h1 className="text-2xl font-semibold text-slate-900">
+                自分がご飯に誘われて良い人へいいねを送ろう！
+              </h1>
+            </div>
           </div>
+        </div>
+        <div className="flex items-center justify-end">
           <Button
             type="button"
             variant="secondary"
@@ -136,7 +151,7 @@ function MembersContent() {
             disabled={isPending}
             className="min-w-[96px]"
           >
-            {isPending ? '更新中...' : '更新'}
+            {isPending ? "更新中..." : "更新"}
           </Button>
         </div>
       </div>
@@ -150,7 +165,9 @@ function MembersContent() {
         </Card>
       ) : members.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-500">まだ表示できるメンバーがいません。</p>
+          <p className="text-sm text-slate-500">
+            まだ表示できるメンバーがいません。
+          </p>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -160,7 +177,9 @@ function MembersContent() {
               member={member}
               isAdmin={isAdmin}
               onToggleLike={handleToggleLike}
-              onDeleteUser={isAdmin ? () => handleDeleteUser(member.id) : undefined}
+              onDeleteUser={
+                isAdmin ? () => handleDeleteUser(member.id) : undefined
+              }
               isUpdating={updatingState?.memberId === member.id}
             />
           ))}

@@ -28,7 +28,7 @@ export function MemberCard({
   return (
     <Card className="border-orange-100">
       <div className="flex flex-col gap-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <ProfileAvatar
               imageUrl={member.profileImageUrl ?? undefined}
@@ -43,7 +43,7 @@ export function MemberCard({
               <FavoriteMealsList meals={member.favoriteMeals} variant="pill" />
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end justify-center gap-2">
             {isAdmin ? (
               <Button
                 type="button"
