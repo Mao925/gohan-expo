@@ -11,8 +11,10 @@ import {
   joinGroupMeal,
   deleteGroupMeal,
   leaveGroupMeal,
+  updateMyGroupMealStatus,
   CreateGroupMealInput,
   GroupMealCandidatesResponse,
+  GroupMealParticipantStatus,
   GroupMeal
 } from '@/lib/api';
 
@@ -126,6 +128,21 @@ export function useDeleteGroupMeal(groupMealId: string) {
     mutationFn: () => {
       if (!token) throw new Error('ログインしてください');
       return deleteGroupMeal(groupMealId, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+    }
+  });
+}
+
+export function useUpdateMyGroupMealStatus(groupMealId: string) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (status: Extract<GroupMealParticipantStatus, 'JOINED' | 'LATE' | 'CANCELLED'>) => {
+      if (!token) throw new Error('ログインしてください');
+      return updateMyGroupMealStatus(groupMealId, status);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });

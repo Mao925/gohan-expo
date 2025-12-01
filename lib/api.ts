@@ -86,18 +86,28 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   return (await response.json()) as T;
 }
 
-export type GroupMealStatus = 'OPEN' | 'FULL' | 'CLOSED';
-export type GroupMealParticipantStatus = 'INVITED' | 'JOINED' | 'DECLINED' | 'CANCELLED';
+export type GroupMealStatus = 'OPEN' | 'FULL' | 'CLOSED' | 'CANCELLED';
+export type GroupMealBudget = 'UNDER_1000' | 'UNDER_1500' | 'UNDER_2000' | 'OVER_2000';
+export type GroupMealParticipantStatus = 'INVITED' | 'JOINED' | 'DECLINED' | 'CANCELLED' | 'LATE';
 export type Weekday = 'SUN' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT';
 export type TimeSlot = 'DAY' | 'NIGHT';
 
 export type GroupMealParticipant = {
+  id: string;
   userId: string;
-  isHost: boolean;
+  isHost?: boolean;
   status: GroupMealParticipantStatus;
-  name: string;
-  favoriteMeals: string[];
-  profileImageUrl?: string | null;
+  user: {
+    id: string;
+    profile:
+      | {
+          id: string;
+          name: string;
+          favoriteMeals: string[];
+          profileImageUrl: string | null;
+        }
+      | null;
+  };
 };
 
 export type GroupMeal = {
@@ -108,6 +118,8 @@ export type GroupMeal = {
   timeSlot: TimeSlot;
   capacity: number;
   status: GroupMealStatus;
+  meetingPlace: string | null;
+  budget: GroupMealBudget | null;
   host: {
     userId: string;
     name: string;
@@ -115,7 +127,7 @@ export type GroupMeal = {
   };
   joinedCount: number;
   remainingSlots: number;
-  myStatus?: 'JOINED' | 'INVITED' | 'NONE';
+  myStatus?: 'JOINED' | 'INVITED' | 'NONE' | 'LATE' | 'CANCELLED';
   participants: GroupMealParticipant[];
 };
 
@@ -136,6 +148,8 @@ export type CreateGroupMealInput = {
   date: string;
   timeSlot: TimeSlot;
   capacity: number;
+  meetingPlace?: string | null;
+  budget?: GroupMealBudget | null;
 };
 
 export async function fetchGroupMeals(token?: string | null): Promise<GroupMeal[]> {
@@ -194,6 +208,32 @@ export async function deleteGroupMeal(groupMealId: string, token?: string | null
     method: 'DELETE',
     token
   });
+}
+
+export async function updateMyGroupMealStatus(
+  groupMealId: string,
+  status: Extract<GroupMealParticipantStatus, 'JOINED' | 'LATE' | 'CANCELLED'>
+) {
+  return apiFetch<{ participant: GroupMealParticipant }>(`/api/group-meals/${groupMealId}/participant/status`, {
+    method: 'PATCH',
+    data: { status }
+  });
+}
+
+export function formatBudgetLabel(budget: GroupMealBudget | null): string | null {
+  if (!budget) return null;
+  switch (budget) {
+    case 'UNDER_1000':
+      return '〜1000円';
+    case 'UNDER_1500':
+      return '〜1500円';
+    case 'UNDER_2000':
+      return '〜2000円';
+    case 'OVER_2000':
+      return '2000円以上';
+    default:
+      return null;
+  }
 }
 
 export type Member = {

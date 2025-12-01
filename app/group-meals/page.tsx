@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, Clock3, Loader2, UserRound, Users } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
@@ -26,28 +26,41 @@ import {
   useLeaveGroupMeal,
   useRespondGroupMeal
 } from '@/hooks/use-group-meals';
-import { ApiError, GroupMeal, TimeSlot } from '@/lib/api';
+import { ApiError, GroupMeal, GroupMealBudget, formatBudgetLabel, TimeSlot } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
+import { useShellChrome } from '@/components/layout/app-shell';
 
 type CreateFormState = {
   title: string;
   date: string;
   timeSlot: TimeSlot;
   capacity: number;
+  meetingPlace: string;
+  budget: GroupMealBudget | null;
 };
 
 const statusMeta: Record<GroupMeal['status'], { label: string; className: string }> = {
   OPEN: { label: '募集中', className: 'bg-emerald-100 text-emerald-700' },
   FULL: { label: '満員', className: 'bg-amber-100 text-amber-700' },
-  CLOSED: { label: '終了', className: 'bg-slate-200 text-slate-600' }
+  CLOSED: { label: '終了', className: 'bg-slate-200 text-slate-600' },
+  CANCELLED: { label: 'キャンセル', className: 'bg-slate-100 text-slate-600' }
 };
 
 const myStatusMeta: Record<NonNullable<GroupMeal['myStatus']>, { label: string; className: string }> = {
   JOINED: { label: '参加中', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
   INVITED: { label: '招待中', className: 'bg-indigo-50 text-indigo-700 border border-indigo-200' },
-  NONE: { label: '未参加', className: 'bg-slate-50 text-slate-600 border border-slate-200' }
+  NONE: { label: '未参加', className: 'bg-slate-50 text-slate-600 border border-slate-200' },
+  LATE: { label: '遅刻予定', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  CANCELLED: { label: 'キャンセル', className: 'bg-slate-50 text-slate-500 border border-slate-200' }
 };
+
+const BUDGET_OPTIONS: { value: GroupMealBudget; label: string }[] = [
+  { value: 'UNDER_1000', label: '〜1000円' },
+  { value: 'UNDER_1500', label: '〜1500円' },
+  { value: 'UNDER_2000', label: '〜2000円' },
+  { value: 'OVER_2000', label: '2000円以上' }
+];
 
 function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
   try {
@@ -177,7 +190,10 @@ function GroupMealCard({
     });
   };
 
-  const joinedParticipants = meal.participants.filter((participant) => participant.status === 'JOINED');
+  const joinedParticipants = (meal.participants ?? []).filter(
+    (participant) => participant && (participant.status === 'JOINED' || participant.status === 'LATE')
+  );
+  const budgetLabel = formatBudgetLabel(meal.budget);
 
   return (
     <Card className="flex flex-col gap-4">
@@ -209,6 +225,19 @@ function GroupMealCard({
               {getTimeSlotLabel(meal.timeSlot)}
             </span>
           </p>
+          {meal.meetingPlace && (
+            <div className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+              <span className="inline-flex h-4 w-4 items-center justify-center text-[10px]">📍</span>
+              <span className="truncate">集合場所：{meal.meetingPlace}</span>
+            </div>
+          )}
+          {budgetLabel && (
+            <div className="mt-1">
+              <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                予算：{budgetLabel}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="secondary">
@@ -251,7 +280,7 @@ function GroupMealCard({
           <div className="mt-2 flex flex-wrap gap-2">
             {joinedParticipants.map((participant) => (
               <span key={participant.userId} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                {participant.name}
+                {participant.user?.profile?.name ?? '参加者'}
               </span>
             ))}
           </div>
@@ -298,12 +327,22 @@ function CreateGroupMealDialog({ onError, inline }: { onError?: (message: string
     title: '',
     date: '',
     timeSlot: 'DAY',
-    capacity: 4
+    capacity: 4,
+    meetingPlace: '',
+    budget: null
   });
+  const shellChrome = useShellChrome();
+
+  useEffect(() => {
+    shellChrome?.setChromeHidden(open);
+    return () => {
+      shellChrome?.setChromeHidden(false);
+    };
+  }, [open, shellChrome]);
   const createMutation = useCreateGroupMeal();
 
   const resetForm = () => {
-    setFormState({ title: '', date: '', timeSlot: 'DAY', capacity: 4 });
+    setFormState({ title: '', date: '', timeSlot: 'DAY', capacity: 4, meetingPlace: '', budget: null });
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -327,7 +366,9 @@ function CreateGroupMealDialog({ onError, inline }: { onError?: (message: string
         title: formState.title.trim() || undefined,
         date: isoDate,
         timeSlot: formState.timeSlot,
-        capacity: formState.capacity
+        capacity: formState.capacity,
+        meetingPlace: formState.meetingPlace.trim() || null,
+        budget: formState.budget ?? null
       },
       {
         onSuccess: () => {
@@ -406,6 +447,44 @@ function CreateGroupMealDialog({ onError, inline }: { onError?: (message: string
               ))}
             </select>
           </label>
+          <div className="space-y-4 text-sm text-slate-600">
+            <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white/60 px-4 py-3">
+              <span className="font-medium text-slate-900">集合場所</span>
+              <Input
+                placeholder="渋谷駅 ハチ公前"
+                value={formState.meetingPlace}
+                onChange={(event) => setFormState((prev) => ({ ...prev, meetingPlace: event.target.value }))}
+              />
+              <p className="text-xs text-slate-500">
+                例：早稲田キャンパス 8号館前 / 高田馬場駅 早稲田口 など
+              </p>
+            </label>
+            <div className="space-y-2">
+              <span className="font-medium text-slate-900">予算の目安</span>
+              <div className="grid grid-cols-2 gap-2">
+                {BUDGET_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() =>
+                      setFormState((prev) => ({
+                        ...prev,
+                        budget: prev.budget === option.value ? null : option.value
+                      }))
+                    }
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
+                      formState.budget === option.value
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-slate-200 bg-white text-slate-700'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
           <ErrorBanner message={formError} />
           <div className="flex justify-end gap-3">
             <DialogClose asChild>

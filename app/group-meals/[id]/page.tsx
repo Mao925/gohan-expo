@@ -12,8 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { useAuth } from '@/context/auth-context';
-import { useGroupMeals, useGroupMealCandidates, useInviteGroupMealCandidates } from '@/hooks/use-group-meals';
-import { ApiError, GroupMeal, GroupMealCandidate } from '@/lib/api';
+import {
+  useGroupMeals,
+  useGroupMealCandidates,
+  useInviteGroupMealCandidates,
+  useUpdateMyGroupMealStatus
+} from '@/hooks/use-group-meals';
+import { ApiError, GroupMeal, GroupMealCandidate, GroupMealParticipantStatus, formatBudgetLabel } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
 
@@ -31,8 +36,15 @@ function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
 const statusMeta: Record<GroupMeal['status'], { label: string; className: string }> = {
   OPEN: { label: '募集中', className: 'bg-emerald-100 text-emerald-700' },
   FULL: { label: '満員', className: 'bg-amber-100 text-amber-700' },
-  CLOSED: { label: '終了', className: 'bg-slate-200 text-slate-600' }
+  CLOSED: { label: '終了', className: 'bg-slate-200 text-slate-600' },
+  CANCELLED: { label: 'キャンセル', className: 'bg-slate-100 text-slate-600' }
 };
+
+const STATUS_ACTIONS: Array<{ status: Extract<GroupMealParticipantStatus, 'JOINED' | 'LATE' | 'CANCELLED'>; label: string; activeClass: string }> = [
+  { status: 'JOINED', label: '参加する', activeClass: 'bg-orange-500 text-white border-orange-500' },
+  { status: 'LATE', label: '遅刻しそう', activeClass: 'bg-amber-500 text-white border-amber-500' },
+  { status: 'CANCELLED', label: '行けなくなった', activeClass: 'bg-slate-500 text-white border-slate-500' }
+];
 
 export default function GroupMealDetailPage({ params }: { params: { id: string } }) {
   return (
@@ -53,6 +65,16 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
     [groupMeals, params.id]
   );
   const isHost = Boolean(groupMeal && user?.id === groupMeal.host.userId);
+  const myParticipant = useMemo(() => {
+    if (!groupMeal || !user?.id) return null;
+    return groupMeal.participants.find((participant) => participant.userId === user.id) ?? null;
+  }, [groupMeal, user?.id]);
+  const [currentStatus, setCurrentStatus] = useState<GroupMealParticipantStatus | null>(myParticipant?.status ?? null);
+  const statusMutation = useUpdateMyGroupMealStatus(params.id);
+
+  useEffect(() => {
+    setCurrentStatus(myParticipant?.status ?? null);
+  }, [myParticipant?.status]);
 
   const {
     data: candidatesData,
@@ -111,9 +133,8 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
 
   const candidatesErrorMessage = (candidatesError as ApiError | undefined)?.message ?? null;
 
-  const joinedParticipants = groupMeal.participants.filter(
-    (participant) => participant.status === 'JOINED' || participant.isHost
-  );
+  const participantCount = groupMeal.participants.length;
+  const budgetLabel = formatBudgetLabel(groupMeal.budget);
 
   const handleToggle = (userId: string) => {
     setActionError(null);
@@ -133,6 +154,22 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
         setSelectedUserIds([]);
       },
       onError: (err: any) => setActionError((err as ApiError | undefined)?.message ?? '招待に失敗しました')
+    });
+  };
+
+  const handleChangeStatus = (nextStatus: Extract<GroupMealParticipantStatus, 'JOINED' | 'LATE' | 'CANCELLED'>) => {
+    if (!myParticipant || currentStatus === nextStatus || statusMutation.isPending) return;
+    setActionError(null);
+    const previousStatus = currentStatus;
+    setCurrentStatus(nextStatus);
+    statusMutation.mutate(nextStatus, {
+      onSuccess: (res) => {
+        setCurrentStatus(res.participant.status);
+      },
+      onError: (err: any) => {
+        setCurrentStatus(previousStatus);
+        setActionError((err as ApiError | undefined)?.message ?? '参加ステータスの更新に失敗しました');
+      }
     });
   };
 
@@ -161,6 +198,20 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
               <Clock3 className="h-4 w-4 text-slate-400" />
               {getTimeSlotLabel(groupMeal.timeSlot)}
             </span>
+          </div>
+          <div className="mt-3 space-y-2 text-sm text-slate-700">
+            {groupMeal.meetingPlace && (
+              <div className="flex items-center gap-2">
+                <span>📍 集合場所</span>
+                <span className="font-medium">{groupMeal.meetingPlace}</span>
+              </div>
+            )}
+            {budgetLabel && (
+              <div className="flex items-center gap-2">
+                <span>💰 予算の目安</span>
+                <span className="font-medium">{budgetLabel}</span>
+              </div>
+            )}
           </div>
         </div>
         <Button asChild size="sm" variant="secondary">
@@ -203,46 +254,72 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
         </div>
       </Card>
 
+      {myParticipant ? (
+        <Card className="space-y-3">
+          <h3 className="text-sm font-semibold text-slate-900">あなたの参加ステータス</h3>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_ACTIONS.map((action) => {
+              const isActive = currentStatus === action.status;
+              return (
+                <button
+                  key={action.status}
+                  type="button"
+                  onClick={() => handleChangeStatus(action.status)}
+                  disabled={statusMutation.isPending}
+                  className={cn(
+                    'rounded-full px-3 py-1 text-xs font-semibold border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
+                    isActive ? action.activeClass : 'bg-white text-slate-700 border-slate-200',
+                    statusMutation.isPending && 'opacity-70 cursor-not-allowed'
+                  )}
+                >
+                  {action.label}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
+
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">参加メンバー</h2>
-          <span className="text-sm text-slate-500">{joinedParticipants.length} 名</span>
+          <span className="text-sm text-slate-500">{participantCount} 名</span>
         </div>
-        {joinedParticipants.length === 0 ? (
+        {participantCount === 0 ? (
           <p className="text-sm text-slate-600">まだ参加者はいません。</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {joinedParticipants.map((participant) => (
-              <div
-                key={participant.userId}
-                className="rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <ProfileAvatar
-                      imageUrl={participant.profileImageUrl}
-                      name={participant.name}
-                      size="sm"
-                      className="flex-shrink-0"
-                    />
-                    <div className="flex flex-1 flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">
-                          {participant.name}
-                        </span>
-                        {participant.isHost ? (
-                          <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-semibold text-orange-700">
-                            ホスト
-                          </span>
-                        ) : null}
+            {groupMeal.participants.map((participant) => {
+              const profile = participant.user?.profile;
+              const name = profile?.name ?? '参加者';
+              const favoriteMeals = profile?.favoriteMeals ?? [];
+              const avatarUrl = profile?.profileImageUrl ?? undefined;
+              const isHostParticipant = participant.isHost || participant.userId === groupMeal.host.userId;
+              const displayedStatus =
+                participant.userId === user?.id ? currentStatus ?? participant.status : participant.status;
+
+              return (
+                <div key={participant.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <ProfileAvatar imageUrl={avatarUrl} name={name} size="sm" className="flex-shrink-0" />
+                      <div className="flex flex-1 flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-900">{name}</span>
+                          {isHostParticipant ? (
+                            <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-semibold text-orange-700">
+                              ホスト
+                            </span>
+                          ) : null}
+                        </div>
+                        <FavoriteMealsList meals={favoriteMeals} className="mt-0" />
                       </div>
-                      <FavoriteMealsList meals={participant.favoriteMeals} className="mt-0" />
                     </div>
+                    <div className="flex flex-col items-end gap-1">{renderParticipantStatusBadge(displayedStatus)}</div>
                   </div>
-                  <span className="text-xs font-semibold text-emerald-700">参加中</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
@@ -368,4 +445,41 @@ function CandidateCard({ candidate, highlight, checked, onToggle }: CandidateCar
       </label>
     </SurfaceCard>
   );
+}
+
+function renderParticipantStatusBadge(status: GroupMealParticipantStatus) {
+  switch (status) {
+    case 'JOINED':
+      return (
+        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+          参加
+        </span>
+      );
+    case 'LATE':
+      return (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+          遅刻予定
+        </span>
+      );
+    case 'CANCELLED':
+      return (
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+          キャンセル
+        </span>
+      );
+    case 'INVITED':
+      return (
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+          招待中
+        </span>
+      );
+    case 'DECLINED':
+      return (
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+          辞退
+        </span>
+      );
+    default:
+      return null;
+  }
 }

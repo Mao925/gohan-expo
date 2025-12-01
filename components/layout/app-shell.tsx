@@ -1,6 +1,6 @@
 "use client";
 
-import { ComponentType, ReactNode } from "react";
+import { ComponentType, ReactNode, createContext, useContext, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -41,6 +41,16 @@ type AppShellProps = {
   children: ReactNode;
 };
 
+type ShellChromeContextValue = {
+  setChromeHidden: (hidden: boolean) => void;
+};
+
+const ShellChromeContext = createContext<ShellChromeContextValue | null>(null);
+
+export function useShellChrome() {
+  return useContext(ShellChromeContext);
+}
+
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const { user, logout, isLoading } = useAuth();
@@ -63,6 +73,13 @@ export function AppShell({ children }: AppShellProps) {
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname?.startsWith(href);
+  const [isChromeHidden, setIsChromeHidden] = useState(false);
+  const chromeContextValue = useMemo(
+    () => ({
+      setChromeHidden: setIsChromeHidden
+    }),
+    []
+  );
 
   if (isLoading) {
     return (
@@ -74,7 +91,12 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg-soft)] text-[var(--text-strong)]">
-      <header className="app-chrome-top sticky top-0 z-30 border-b border-[var(--border)] bg-white/90 backdrop-blur">
+      <header
+        className={cn(
+          "app-chrome-top sticky top-0 z-30 border-b border-[var(--border)] bg-white/90 backdrop-blur",
+          isChromeHidden && "hidden"
+        )}
+      >
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-6">
           <Link href="/" className="flex items-center gap-3 text-lg font-semibold text-[var(--text-strong)]">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--card-muted)] text-[var(--brand-strong)]">
@@ -120,9 +142,16 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-16 md:pb-14">{children}</main>
+      <ShellChromeContext.Provider value={chromeContextValue}>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-16 md:pb-14">{children}</main>
+      </ShellChromeContext.Provider>
 
-      <nav className="app-chrome-bottom fixed inset-x-3 bottom-3 z-30 mx-auto max-w-xl rounded-3xl border border-[var(--border)] bg-white/95 shadow-lg backdrop-blur md:hidden">
+      <nav
+        className={cn(
+          "app-chrome-bottom fixed inset-x-3 bottom-3 z-30 mx-auto max-w-xl rounded-3xl border border-[var(--border)] bg-white/95 shadow-lg backdrop-blur md:hidden",
+          isChromeHidden && "hidden"
+        )}
+      >
         <div className="flex items-center justify-between px-3 py-2">
           {mobileNavItems.map(({ href, label, icon: Icon }) => (
             <Link
