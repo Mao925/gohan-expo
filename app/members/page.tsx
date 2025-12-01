@@ -120,7 +120,16 @@ function MembersContent() {
       await deleteMember(userId);
       setMembers((prev) => prev.filter((member) => member.id !== userId));
     } catch (err: any) {
-      setActionError(err?.message ?? "ユーザーの削除に失敗しました");
+      console.error("Failed to delete member", err);
+      if (err?.status === 404) {
+        setActionError("対象メンバーが見つかりません");
+      } else if (err?.status === 403) {
+        setActionError("ユーザー削除の権限がありません");
+      } else if (err?.status === 400) {
+        setActionError(err?.message ?? "ユーザーの削除に失敗しました");
+      } else {
+        setActionError(err?.message ?? "ユーザーの削除に失敗しました");
+      }
     }
   };
 
