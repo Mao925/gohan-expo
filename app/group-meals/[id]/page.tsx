@@ -12,12 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { useAuth } from '@/context/auth-context';
-import {
-  useGroupMeals,
-  useGroupMealCandidates,
-  useInviteGroupMealCandidates,
-  useUpdateMyGroupMealStatus
-} from '@/hooks/use-group-meals';
+import { useGroupMeals, useGroupMealCandidates, useInviteGroupMealCandidates } from '@/hooks/use-group-meals';
 import { ApiError, GroupMeal, GroupMealCandidate, GroupMealParticipantStatus, formatBudgetLabel } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
@@ -45,12 +40,6 @@ const statusMeta: Record<GroupMeal['status'], { label: string; className: string
   CANCELLED: { label: 'キャンセル', className: 'bg-slate-100 text-slate-600' }
 };
 
-const STATUS_ACTIONS: Array<{ status: Extract<GroupMealParticipantStatus, 'JOINED' | 'LATE' | 'CANCELLED'>; label: string; activeClass: string }> = [
-  { status: 'JOINED', label: '参加する', activeClass: 'bg-orange-500 text-white border-orange-500' },
-  { status: 'LATE', label: '遅刻しそう', activeClass: 'bg-amber-500 text-white border-amber-500' },
-  { status: 'CANCELLED', label: '行けなくなった', activeClass: 'bg-slate-500 text-white border-slate-500' }
-];
-
 export default function GroupMealDetailPage({ params }: { params: { id: string } }) {
   return (
     <CommunityGate>
@@ -70,16 +59,6 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
     [groupMeals, params.id]
   );
   const isHost = Boolean(groupMeal && user?.id === groupMeal.host.userId);
-  const myParticipant = useMemo(() => {
-    if (!groupMeal || !user?.id) return null;
-    return groupMeal.participants.find((participant) => participant.userId === user.id) ?? null;
-  }, [groupMeal, user?.id]);
-  const [currentStatus, setCurrentStatus] = useState<GroupMealParticipantStatus | null>(myParticipant?.status ?? null);
-  const statusMutation = useUpdateMyGroupMealStatus(params.id);
-
-  useEffect(() => {
-    setCurrentStatus(myParticipant?.status ?? null);
-  }, [myParticipant?.status]);
   const {
     data: candidatesData,
     isPending: candidatesPending,
@@ -136,8 +115,10 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   }
 
   const candidatesErrorMessage = (candidatesError as ApiError | undefined)?.message ?? null;
-
-  const participantCount = groupMeal.participants.length;
+  const joinedParticipants = groupMeal.participants.filter((p) => p.status === 'JOINED');
+  const hostInParticipants = joinedParticipants.some((p) => p.isHost);
+  const participantCount = joinedParticipants.length + (hostInParticipants ? 0 : 1);
+  const remainingSlots = Math.max(groupMeal.capacity - participantCount, 0);
   const budgetLabel = formatBudgetLabel(groupMeal.budget);
 
   const handleToggle = (userId: string) => {
@@ -158,22 +139,6 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
         setSelectedUserIds([]);
       },
       onError: (err: any) => setActionError((err as ApiError | undefined)?.message ?? '招待に失敗しました')
-    });
-  };
-
-  const handleChangeStatus = (nextStatus: Extract<GroupMealParticipantStatus, 'JOINED' | 'LATE' | 'CANCELLED'>) => {
-    if (!myParticipant || currentStatus === nextStatus || statusMutation.isPending) return;
-    setActionError(null);
-    const previousStatus = currentStatus;
-    setCurrentStatus(nextStatus);
-    statusMutation.mutate(nextStatus, {
-      onSuccess: (res) => {
-        setCurrentStatus(res.participant.status);
-      },
-      onError: (err: any) => {
-        setCurrentStatus(previousStatus);
-        setActionError((err as ApiError | undefined)?.message ?? '参加ステータスの更新に失敗しました');
-      }
     });
   };
 
@@ -211,10 +176,10 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
               </div>
             )}
             {budgetLabel && (
-              <div className="flex items-center gap-2">
-                <span>💰 予算の目安</span>
-                <span className="font-medium">{budgetLabel}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span>💰 予算の目安</span>
+              <span className="font-medium">{budgetLabel}</span>
+            </div>
             )}
           </div>
         </div>
@@ -239,50 +204,24 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
               <p className="text-base font-semibold text-slate-900">{groupMeal.host.name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-            <Users className="h-5 w-5 text-slate-500" />
-            <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">定員 / 参加</p>
-              <p className="text-base font-semibold text-slate-900">
-                {groupMeal.joinedCount} / {groupMeal.capacity}
-              </p>
+            <div className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+              <Users className="h-5 w-5 text-slate-500" />
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">定員 / 参加</p>
+                <p className="text-base font-semibold text-slate-900">
+                  {participantCount} / {groupMeal.capacity}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3">
-            <ShieldCheck className="h-5 w-5 text-emerald-600" />
-            <div>
-              <p className="text-xs uppercase tracking-wide text-emerald-600">残り枠</p>
-              <p className="text-base font-semibold text-emerald-800">{groupMeal.remainingSlots}</p>
+            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              <div>
+                <p className="text-xs uppercase tracking-wide text-emerald-600">残り枠</p>
+                <p className="text-base font-semibold text-emerald-800">{remainingSlots}</p>
+              </div>
             </div>
-          </div>
         </div>
       </Card>
-
-      {myParticipant ? (
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900">あなたの参加ステータス</h3>
-          <div className="flex flex-wrap gap-2">
-            {STATUS_ACTIONS.map((action) => {
-              const isActive = currentStatus === action.status;
-              return (
-                <button
-                  key={action.status}
-                  type="button"
-                  onClick={() => handleChangeStatus(action.status)}
-                  disabled={statusMutation.isPending}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-xs font-semibold border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
-                    isActive ? action.activeClass : 'bg-white text-slate-700 border-slate-200',
-                    statusMutation.isPending && 'opacity-70 cursor-not-allowed'
-                  )}
-                >
-                  {action.label}
-                </button>
-              );
-            })}
-          </div>
-        </Card>
-      ) : null}
 
 
       <Card className="space-y-4">
@@ -300,8 +239,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
               const favoriteMeals = profile?.favoriteMeals ?? participant.favoriteMeals ?? [];
               const avatarUrl = profile?.profileImageUrl ?? participant.profileImageUrl ?? undefined;
               const isHostParticipant = participant.isHost || participant.userId === groupMeal.host.userId;
-              const displayedStatus =
-                participant.userId === user?.id ? currentStatus ?? participant.status : participant.status;
+              const displayedStatus = participant.status;
               const locationLabel = profile?.mainArea;
               const subAreas = profile?.subAreas ?? [];
               const budgetLabel = profile?.defaultBudget ? formatBudgetLabel(profile.defaultBudget) : null;
