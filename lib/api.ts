@@ -1,5 +1,5 @@
 import { getToken } from '@/lib/token-storage';
-import type { MatchSummary } from '@/lib/types';
+import type { LikeActionStatus, LikeStatus, MatchSummary } from '@/lib/types';
 
 export class ApiError extends Error {
   status: number;
@@ -91,6 +91,27 @@ export type GroupMealBudget = 'UNDER_1000' | 'UNDER_1500' | 'UNDER_2000' | 'OVER
 export type GroupMealParticipantStatus = 'INVITED' | 'JOINED' | 'DECLINED' | 'CANCELLED' | 'LATE';
 export type Weekday = 'SUN' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT';
 export type TimeSlot = 'DAY' | 'NIGHT';
+export type DrinkingStyle = 'NO_ALCOHOL' | 'SOMETIMES' | 'ENJOY_DRINKING';
+export type MealStyle = 'TALK_DEEP' | 'CASUAL_CHAT' | 'BRAINSTORM';
+export type GoMealFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+
+export type Profile = {
+  id: string;
+  userId: string;
+  name?: string | null;
+  favoriteMeals: string[];
+  profileImageUrl?: string | null;
+  mainArea?: string | null;
+  subAreas: string[];
+  defaultBudget?: GroupMealBudget | null;
+  drinkingStyle?: DrinkingStyle | null;
+  ngFoods: string[];
+  bio?: string | null;
+  mealStyle?: MealStyle | null;
+  goMealFrequency?: GoMealFrequency | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type GroupMealParticipant = {
   id: string;
@@ -99,14 +120,7 @@ export type GroupMealParticipant = {
   status: GroupMealParticipantStatus;
   user: {
     id: string;
-    profile:
-      | {
-          id: string;
-          name: string;
-          favoriteMeals: string[];
-          profileImageUrl: string | null;
-        }
-      | null;
+    profile: Profile | null;
   };
   name?: string;
   favoriteMeals?: string[];
@@ -138,6 +152,7 @@ export type GroupMealCandidate = {
   userId: string;
   name: string;
   favoriteMeals: string[];
+  profile?: Profile | null;
   profileImageUrl?: string | null;
   isAvailableForSlot: boolean;
 };
@@ -241,20 +256,90 @@ export function formatBudgetLabel(budget: GroupMealBudget | null): string | null
 
 export type Member = {
   id: string;
-  name: string | null;
-  favoriteMeals: string[];
-  profileImageUrl: string | null;
-  myLikeStatus: 'YES' | 'NO' | 'NONE';
-  isMutualLike: boolean;
+  email: string;
+  isAdmin?: boolean;
+  name?: string | null;
+  favoriteMeals?: string[];
+  profileImageUrl?: string | null;
+  myLikeStatus?: LikeStatus;
+  isMutualLike?: boolean;
+  profile?: Profile | null;
+};
+
+export type MembersResponse = {
+  members: Member[];
 };
 
 export async function fetchMembers(): Promise<Member[]> {
-  const data = await apiFetch<{ members: Member[] }>('/api/members');
-  return data.members;
+  const data = await apiFetch<MembersResponse | Member[]>('/api/members');
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (data && Array.isArray((data as MembersResponse).members)) {
+    return (data as MembersResponse).members;
+  }
+
+  return [];
 }
 
 export async function fetchMatches(token?: string | null): Promise<MatchSummary[]> {
   return apiFetch<MatchSummary[]>('/api/matches', { token });
+}
+
+export type UpdateProfilePayload = {
+  name: string;
+  favoriteMeals: string[];
+  mainArea?: string | null;
+  subAreas?: string[];
+  defaultBudget?: GroupMealBudget | null;
+  drinkingStyle?: DrinkingStyle | null;
+  ngFoods?: string[];
+  bio?: string | null;
+  mealStyle?: MealStyle | null;
+  goMealFrequency?: GoMealFrequency | null;
+};
+
+export async function fetchProfile(token?: string | null): Promise<Profile> {
+  return apiFetch<Profile>('/api/profile', { token });
+}
+
+export async function updateProfile(payload: UpdateProfilePayload, token?: string | null): Promise<Profile> {
+  return apiFetch<Profile>('/api/profile', {
+    method: 'PUT',
+    data: payload,
+    token
+  });
+}
+
+export async function uploadProfileImage(file: File, token?: string | null): Promise<Profile> {
+  if (!token) throw new Error('ログインしてください');
+
+  const formData = new FormData();
+  formData.append('image', file);
+  const url = new URL('/api/profile/image', API_BASE_URL).toString();
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    let message = '画像のアップロードに失敗しました';
+    try {
+      const body = await response.json();
+      if (body?.message) message = body.message;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(message, response.status);
+  }
+
+  return response.json();
 }
 
 export type AvailabilityStatusSummary = {
@@ -269,17 +354,17 @@ export async function fetchAvailabilityStatus(): Promise<AvailabilityStatusSumma
 
 export type LikeToggleResponse = {
   targetUserId: string;
-  status: 'YES' | 'NO';
-  isMutual: boolean;
+  status: LikeActionStatus;
+  isMutualLike: boolean;
 };
 
 export async function toggleLike(
   targetUserId: string,
-  choice: 'YES' | 'NO'
+  status: LikeActionStatus
 ): Promise<LikeToggleResponse> {
   return apiFetch<LikeToggleResponse>(`/api/likes/${targetUserId}`, {
     method: 'PUT',
-    data: { choice }
+    data: { status }
   });
 }
 

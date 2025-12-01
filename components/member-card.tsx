@@ -6,12 +6,18 @@ import { Card } from '@/components/ui/card';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { FavoriteMealsList } from './favorite-meals-list';
 import { LikeToggleButton } from './like-toggle-button';
-import { Member } from '@/lib/types';
+import { formatBudgetLabel } from '@/lib/api';
+import { LikeStatus, Member } from '@/lib/types';
+import {
+  DRINKING_STYLE_LABELS,
+  MEAL_STYLE_LABELS,
+  GO_MEAL_FREQUENCY_LABELS
+} from '@/lib/profile-labels';
 
 type MemberCardProps = {
   member: Member;
   isAdmin?: boolean;
-  onToggleLike?: (memberId: string, currentStatus: 'YES' | 'NO' | 'NONE') => void;
+  onToggleLike?: (memberId: string, currentStatus: LikeStatus) => void;
   onDeleteUser?: () => void;
   isUpdating?: boolean;
 };
@@ -21,26 +27,72 @@ export function MemberCard({
   isAdmin,
   onToggleLike,
   onDeleteUser,
-  isUpdating,
+  isUpdating
 }: MemberCardProps) {
-  const effectiveStatus: 'YES' | 'NO' | 'NONE' = member.myLikeStatus ?? 'NONE';
+  const effectiveStatus: LikeStatus = member.myLikeStatus ?? 'NONE';
+  const profile = member.profile ?? null;
+  const name = profile?.name ?? member.name ?? '名前未設定';
+  const favoriteMeals = profile?.favoriteMeals ?? member.favoriteMeals ?? [];
+  const locationLabel = profile?.mainArea;
+  const subAreas = profile?.subAreas ?? [];
+  const budgetLabel = profile?.defaultBudget ? formatBudgetLabel(profile.defaultBudget) : null;
+  const drinkingLabel = profile?.drinkingStyle ? DRINKING_STYLE_LABELS[profile.drinkingStyle] : null;
+  const mealStyleLabel = profile?.mealStyle ? MEAL_STYLE_LABELS[profile.mealStyle] : null;
+  const frequencyLabel = profile?.goMealFrequency ? GO_MEAL_FREQUENCY_LABELS[profile.goMealFrequency] : null;
+  const preferenceBadges = [budgetLabel, drinkingLabel, mealStyleLabel, frequencyLabel].filter(
+    Boolean
+  ) as string[];
+  const ngFoods = profile?.ngFoods ?? [];
 
   return (
     <Card className="border-orange-100">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <ProfileAvatar
-              imageUrl={member.profileImageUrl ?? undefined}
-              name={member.name ?? '名前未設定'}
+              imageUrl={profile?.profileImageUrl ?? member.profileImageUrl ?? undefined}
+              name={name}
               size="md"
             />
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <p className="text-lg font-semibold text-slate-900">{member.name ?? '名前未設定'}</p>
+                <p className="text-lg font-semibold text-slate-900">{name}</p>
                 {member.isMutualLike ? <Badge variant="secondary">マッチ済み</Badge> : null}
               </div>
-              <FavoriteMealsList meals={member.favoriteMeals} variant="pill" />
+              {locationLabel ? (
+                <p className="text-sm text-slate-500">{locationLabel}</p>
+              ) : (
+                <p className="text-sm text-slate-400">エリア未設定</p>
+              )}
+              {subAreas.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {subAreas.map((area) => (
+                    <span key={area} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                      {area}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {preferenceBadges.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {preferenceBadges.map((badge) => (
+                    <span key={badge} className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700">
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <FavoriteMealsList meals={favoriteMeals} variant="pill" />
+              {ngFoods.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs font-semibold text-rose-600">NG:</span>
+                  {ngFoods.map((food) => (
+                    <span key={food} className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-600">
+                      {food}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-end justify-center gap-2">

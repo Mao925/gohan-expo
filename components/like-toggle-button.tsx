@@ -2,11 +2,10 @@
 
 import { Heart, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-export type LikeToggleStatus = 'YES' | 'NO' | 'NONE';
+import type { LikeStatus } from '@/lib/types';
 
 type LikeToggleButtonProps = {
-  status: LikeToggleStatus;
+  status: LikeStatus;
   onClick?: () => void;
   disabled?: boolean;
   isLoading?: boolean;

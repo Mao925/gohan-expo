@@ -21,6 +21,11 @@ import {
 import { ApiError, GroupMeal, GroupMealCandidate, GroupMealParticipantStatus, formatBudgetLabel } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
+import {
+  DRINKING_STYLE_LABELS,
+  MEAL_STYLE_LABELS,
+  GO_MEAL_FREQUENCY_LABELS
+} from '@/lib/profile-labels';
 
 function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
   try {
@@ -75,7 +80,6 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   useEffect(() => {
     setCurrentStatus(myParticipant?.status ?? null);
   }, [myParticipant?.status]);
-
   const {
     data: candidatesData,
     isPending: candidatesPending,
@@ -280,6 +284,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
         </Card>
       ) : null}
 
+
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">参加メンバー</h2>
@@ -297,6 +302,16 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
               const isHostParticipant = participant.isHost || participant.userId === groupMeal.host.userId;
               const displayedStatus =
                 participant.userId === user?.id ? currentStatus ?? participant.status : participant.status;
+              const locationLabel = profile?.mainArea;
+              const subAreas = profile?.subAreas ?? [];
+              const budgetLabel = profile?.defaultBudget ? formatBudgetLabel(profile.defaultBudget) : null;
+              const drinkingLabel = profile?.drinkingStyle ? DRINKING_STYLE_LABELS[profile.drinkingStyle] : null;
+              const mealStyleLabel = profile?.mealStyle ? MEAL_STYLE_LABELS[profile.mealStyle] : null;
+              const frequencyLabel = profile?.goMealFrequency ? GO_MEAL_FREQUENCY_LABELS[profile.goMealFrequency] : null;
+              const preferenceBadges = [budgetLabel, drinkingLabel, mealStyleLabel, frequencyLabel].filter(
+                Boolean
+              ) as string[];
+              const bio = profile?.bio;
 
               return (
                 <div key={participant.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -312,7 +327,35 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
                             </span>
                           ) : null}
                         </div>
+                        {locationLabel ? (
+                          <p className="text-xs text-slate-500">{locationLabel}</p>
+                        ) : null}
+                        {subAreas.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {subAreas.map((area) => (
+                              <span
+                                key={area}
+                                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+                              >
+                                {area}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {preferenceBadges.length > 0 && (
+                          <div className="flex flex-wrap gap-2 text-[11px]">
+                            {preferenceBadges.map((badge) => (
+                              <span
+                                key={badge}
+                                className="rounded-full border border-slate-200 px-2 py-0.5 font-semibold text-slate-600"
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <FavoriteMealsList meals={favoriteMeals} className="mt-0" />
+                        {bio ? <p className="text-xs text-slate-500">{bio}</p> : null}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">{renderParticipantStatusBadge(displayedStatus)}</div>
@@ -357,6 +400,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
                             highlight
                             checked={selectedUserIds.includes(candidate.userId)}
                             onToggle={() => handleToggle(candidate.userId)}
+                            groupMealBudget={groupMeal.budget}
                           />
                         ))}
                       </div>
@@ -374,6 +418,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
                             highlight={false}
                             checked={selectedUserIds.includes(candidate.userId)}
                             onToggle={() => handleToggle(candidate.userId)}
+                            groupMealBudget={groupMeal.budget}
                           />
                         ))}
                       </div>
@@ -409,9 +454,29 @@ type CandidateCardProps = {
   highlight?: boolean;
   checked: boolean;
   onToggle: () => void;
+  groupMealBudget: GroupMeal['budget'] | null;
 };
 
-function CandidateCard({ candidate, highlight, checked, onToggle }: CandidateCardProps) {
+function CandidateCard({
+  candidate,
+  highlight,
+  checked,
+  onToggle,
+  groupMealBudget
+}: CandidateCardProps) {
+  const profile = candidate.profile ?? null;
+  const favoriteMeals = profile?.favoriteMeals ?? candidate.favoriteMeals ?? [];
+  const locationLabel = profile?.mainArea;
+  const subAreas = profile?.subAreas ?? [];
+  const budgetLabel = profile?.defaultBudget ? formatBudgetLabel(profile.defaultBudget) : null;
+  const drinkingLabel = profile?.drinkingStyle ? DRINKING_STYLE_LABELS[profile.drinkingStyle] : null;
+  const mealStyleLabel = profile?.mealStyle ? MEAL_STYLE_LABELS[profile.mealStyle] : null;
+  const frequencyLabel = profile?.goMealFrequency ? GO_MEAL_FREQUENCY_LABELS[profile.goMealFrequency] : null;
+  const preferenceBadges = [budgetLabel, drinkingLabel, mealStyleLabel, frequencyLabel].filter(
+    Boolean
+  ) as string[];
+  const budgetMatches = groupMealBudget && profile?.defaultBudget === groupMealBudget;
+
   return (
     <SurfaceCard
       className={cn(
@@ -439,8 +504,35 @@ function CandidateCard({ candidate, highlight, checked, onToggle }: CandidateCar
             >
               {highlight ? '日程が合う' : '今回は日程が合っていません'}
             </span>
+            {budgetMatches ? (
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
+                予算一致
+              </span>
+            ) : null}
           </div>
-          <FavoriteMealsList meals={candidate.favoriteMeals} variant="pill" />
+          {locationLabel ? <p className="text-xs text-slate-500">{locationLabel}</p> : null}
+          {subAreas.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {subAreas.map((area) => (
+                <span key={area} className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                  {area}
+                </span>
+              ))}
+            </div>
+          )}
+          <FavoriteMealsList meals={favoriteMeals} variant="pill" />
+          {preferenceBadges.length > 0 && (
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              {preferenceBadges.map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-slate-200 px-2 py-0.5 font-semibold text-slate-600"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </label>
     </SurfaceCard>
