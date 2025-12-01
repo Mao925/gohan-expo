@@ -5,14 +5,16 @@ export type User = {
   isAdmin?: boolean;
 };
 
-export type Profile = {
-  id: string;
-  name: string;
-  favoriteMeals: string[];
-  profileImageUrl?: string | null;
-};
+export type Profile = import('@/lib/api').Profile;
+export type GroupMealBudget = import('@/lib/api').GroupMealBudget;
+export type DrinkingStyle = import('@/lib/api').DrinkingStyle;
+export type MealStyle = import('@/lib/api').MealStyle;
+export type GoMealFrequency = import('@/lib/api').GoMealFrequency;
 
 export type CommunityStatus = 'UNAPPLIED' | 'PENDING' | 'APPROVED';
+
+export type LikeStatus = 'YES' | 'NO' | 'NONE';
+export type LikeActionStatus = Exclude<LikeStatus, 'NONE'>;
 
 export type Member = import('@/lib/api').Member & {
   isSelf?: boolean;

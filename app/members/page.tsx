@@ -16,10 +16,9 @@ import {
   toggleLike,
   type LikeToggleResponse,
 } from "@/lib/api";
-import { Member } from "@/lib/types";
+import { LikeActionStatus, LikeStatus, Member } from "@/lib/types";
 
-type LikeChoice = "YES" | "NO";
-type UpdatingState = { memberId: string; choice: LikeChoice } | null;
+type UpdatingState = { memberId: string; choice: LikeActionStatus } | null;
 
 export default function MembersPage() {
   return (
@@ -41,9 +40,7 @@ function MembersContent() {
   const [updatingState, setUpdatingState] = useState<UpdatingState>(null);
 
   useEffect(() => {
-    if (data) {
-      setMembers(data);
-    }
+    setMembers(data ?? []);
   }, [data]);
 
   const isInitialLoading = isPending && members.length === 0;
@@ -54,14 +51,11 @@ function MembersContent() {
       : apiErrorMessage;
   const errorMessage = actionError ?? friendlyApiError;
 
-  const handleToggleLike = async (
-    memberId: string,
-    currentStatus: LikeChoice | "NONE"
-  ) => {
+  const handleToggleLike = async (memberId: string, currentStatus: LikeStatus) => {
     const targetMember = members.find((item) => item.id === memberId);
     if (!targetMember) return;
 
-    const nextChoice: LikeChoice = currentStatus === "YES" ? "NO" : "YES";
+    const nextChoice: LikeActionStatus = currentStatus === "YES" ? "NO" : "YES";
     const previousStatus = targetMember.myLikeStatus ?? "NONE";
     const previousIsMutual = targetMember.isMutualLike;
 
@@ -80,17 +74,14 @@ function MembersContent() {
     );
 
     try {
-      const response: LikeToggleResponse = await toggleLike(
-        memberId,
-        nextChoice
-      );
+      const response: LikeToggleResponse = await toggleLike(memberId, nextChoice);
       setMembers((prev) =>
         prev.map((item) =>
           item.id === response.targetUserId
             ? {
                 ...item,
                 myLikeStatus: response.status,
-                isMutualLike: response.isMutual,
+                isMutualLike: response.isMutualLike,
               }
             : item
         )
