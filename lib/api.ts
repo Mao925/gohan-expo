@@ -1,5 +1,5 @@
 import { getToken } from '@/lib/token-storage';
-import type { LikeActionStatus, LikeStatus, MatchSummary } from '@/lib/types';
+import type { LikeStatus, MatchSummary } from '@/lib/types';
 
 export class ApiError extends Error {
   status: number;
@@ -20,6 +20,7 @@ export class ApiError extends Error {
 export type ApiRequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   data?: unknown;
+  body?: BodyInit;
   token?: string | null;
   headers?: Record<string, string>;
 };
@@ -30,7 +31,7 @@ const API_BASE_URL = RAW_API_BASE_URL.endsWith('/') ? RAW_API_BASE_URL : `${RAW_
 const SERVER_UNAVAILABLE_MESSAGE = '現在サーバー側で問題が発生しています。時間をおいて再度お試しください。';
 
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { method = 'GET', data, token, headers: customHeaders } = options;
+  const { method = 'GET', data, body, token, headers: customHeaders } = options;
   const resolvedToken = token !== undefined ? token : getToken();
 
   const headers: Record<string, string> = {
@@ -45,12 +46,13 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   const normalizedPath = path.replace(/^\/+/, '');
   const url = new URL(normalizedPath, API_BASE_URL).toString();
 
+  const payload = body ?? (data ? JSON.stringify(data) : undefined);
   let response: Response;
   try {
     response = await fetch(url, {
       method,
       headers,
-      body: data ? JSON.stringify(data) : undefined,
+      body: payload,
       cache: 'no-store',
       credentials: 'include'
     });
@@ -358,19 +360,18 @@ export async function fetchAvailabilityStatus(): Promise<AvailabilityStatusSumma
   return apiFetch<AvailabilityStatusSummary>('/api/availability/status');
 }
 
-export type LikeToggleResponse = {
-  targetUserId: string;
-  status: LikeActionStatus;
-  isMutualLike: boolean;
-};
+export type LikeAnswer = 'YES' | 'NO';
 
-export async function toggleLike(
+export async function updateLikeStatus(
   targetUserId: string,
-  status: LikeActionStatus
-): Promise<LikeToggleResponse> {
-  return apiFetch<LikeToggleResponse>(`/api/likes/${targetUserId}`, {
+  answer: LikeAnswer,
+): Promise<void> {
+  await apiFetch<void>(`/api/likes/${targetUserId}`, {
     method: 'PUT',
-    data: { status }
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ answer }),
   });
 }
 

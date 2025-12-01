@@ -13,12 +13,12 @@ import {
   ApiError,
   deleteMember,
   fetchMembers,
-  toggleLike,
-  type LikeToggleResponse,
+  LikeAnswer,
+  updateLikeStatus,
 } from "@/lib/api";
-import { LikeActionStatus, LikeStatus, Member } from "@/lib/types";
+import { LikeStatus, Member } from "@/lib/types";
 
-type UpdatingState = { memberId: string; choice: LikeActionStatus } | null;
+type UpdatingState = { memberId: string } | null;
 
 export default function MembersPage() {
   return (
@@ -52,42 +52,33 @@ function MembersContent() {
   const errorMessage = actionError ?? friendlyApiError;
 
   const handleToggleLike = async (memberId: string, currentStatus: LikeStatus) => {
+    if (updatingState?.memberId === memberId) return;
     const targetMember = members.find((item) => item.id === memberId);
     if (!targetMember) return;
 
-    const nextChoice: LikeActionStatus = currentStatus === "YES" ? "NO" : "YES";
+    const nextAnswer: LikeAnswer = currentStatus === "YES" ? "NO" : "YES";
     const previousStatus = targetMember.myLikeStatus ?? "NONE";
     const previousIsMutual = targetMember.isMutualLike;
 
     setActionError(null);
-    setUpdatingState({ memberId, choice: nextChoice });
+    setUpdatingState({ memberId });
     setMembers((prev) =>
       prev.map((item) =>
         item.id === memberId
           ? {
               ...item,
-              myLikeStatus: nextChoice,
-              isMutualLike: nextChoice === "YES" ? item.isMutualLike : false,
+              myLikeStatus: nextAnswer,
+              isMutualLike: nextAnswer === "YES" ? item.isMutualLike : false,
             }
           : item
       )
     );
 
     try {
-      const response: LikeToggleResponse = await toggleLike(memberId, nextChoice);
-      setMembers((prev) =>
-        prev.map((item) =>
-          item.id === response.targetUserId
-            ? {
-                ...item,
-                myLikeStatus: response.status,
-                isMutualLike: response.isMutualLike,
-              }
-            : item
-        )
-      );
+      await updateLikeStatus(memberId, nextAnswer);
     } catch (err: any) {
-      setActionError(err?.message ?? "回答の更新に失敗しました");
+      console.error("Failed to update like status", err);
+      setActionError("いいねの送信に失敗しました。通信環境を確認して再度お試しください。");
       setMembers((prev) =>
         prev.map((item) =>
           item.id === memberId
