@@ -291,9 +291,9 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
           <div className="grid gap-3 sm:grid-cols-2">
             {groupMeal.participants.map((participant) => {
               const profile = participant.user?.profile;
-              const name = profile?.name ?? '参加者';
-              const favoriteMeals = profile?.favoriteMeals ?? [];
-              const avatarUrl = profile?.profileImageUrl ?? undefined;
+              const name = profile?.name ?? participant.name ?? '参加者';
+              const favoriteMeals = profile?.favoriteMeals ?? participant.favoriteMeals ?? [];
+              const avatarUrl = profile?.profileImageUrl ?? participant.profileImageUrl ?? undefined;
               const isHostParticipant = participant.isHost || participant.userId === groupMeal.host.userId;
               const displayedStatus =
                 participant.userId === user?.id ? currentStatus ?? participant.status : participant.status;

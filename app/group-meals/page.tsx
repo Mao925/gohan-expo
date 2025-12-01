@@ -280,7 +280,7 @@ function GroupMealCard({
           <div className="mt-2 flex flex-wrap gap-2">
             {joinedParticipants.map((participant) => (
               <span key={participant.userId} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                {participant.user?.profile?.name ?? '参加者'}
+                {participant.user?.profile?.name ?? participant.name ?? '参加者'}
               </span>
             ))}
           </div>
