@@ -108,6 +108,9 @@ export type GroupMealParticipant = {
         }
       | null;
   };
+  name?: string;
+  favoriteMeals?: string[];
+  profileImageUrl?: string | null;
 };
 
 export type GroupMeal = {
