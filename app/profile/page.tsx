@@ -137,13 +137,15 @@ function ProfileContent() {
     queryKey: ['profile', token],
     queryFn: async () => {
       if (!token) throw new Error('ログインしてください');
-      return fetchProfile(token);
-    },
-    enabled: Boolean(token),
-    onError: (err: any) => setError(err?.message ?? '読み込みに失敗しました'),
-    onSuccess: () => {
       setError(null);
-    }
+      try {
+        return await fetchProfile(token);
+      } catch (err: any) {
+        setError(err?.message ?? '読み込みに失敗しました');
+        throw err;
+      }
+    },
+    enabled: Boolean(token)
   });
 
   useEffect(() => {
