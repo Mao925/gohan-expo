@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, KeyboardEvent, useEffect, useState } from 'react';
+import { ChangeEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,6 +62,23 @@ const HOBBY_OPTIONS = [
   'ボードゲーム'
 ] as const;
 
+const chipBaseClass = 'rounded-full border px-3 py-1 text-xs font-semibold transition';
+const chipSelectedClass = 'border-orange-500 bg-orange-500 text-white';
+const chipUnselectedClass = 'border-slate-200 bg-white text-slate-600';
+
+type AutoSaveSnapshotArgs = {
+  name: string;
+  bio: string | null;
+  favoriteMeals: string[];
+  areas: string[];
+  hobbies: string[];
+  defaultBudget: GroupMealBudget | null;
+  drinkingStyle: DrinkingStyle | null;
+  goMealFrequency: GoMealFrequency | null;
+};
+
+const buildAutoSaveSnapshot = (args: AutoSaveSnapshotArgs) => JSON.stringify(args);
+
 const schema = z.object({
   name: z.string().min(2, '2文字以上で入力してください').max(40, '40文字以内で入力してください'),
   bio: z.string().max(500, '500文字以内で入力してください').optional()
@@ -94,6 +111,9 @@ function ProfileContent() {
   const [defaultBudget, setDefaultBudget] = useState<GroupMealBudget | null>(null);
   const [drinkingStyle, setDrinkingStyle] = useState<DrinkingStyle | null>(null);
   const [goMealFrequency, setGoMealFrequency] = useState<GoMealFrequency | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedSnapshotRef = useRef<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -103,6 +123,9 @@ function ProfileContent() {
     }
   });
 
+  const watchedName = form.watch('name');
+  const watchedBio = form.watch('bio');
+
   const toggleSelection = (
     option: string,
     current: string[],
@@ -111,17 +134,6 @@ function ProfileContent() {
     setter((prev) =>
       prev.includes(option) ? prev.filter((value) => value !== option) : [...prev, option]
     );
-  };
-
-  const addNgFood = () => {
-    const value = ngFoodInput.trim();
-    if (!value || ngFoods.includes(value)) return;
-    setNgFoods((prev) => [...prev, value]);
-    setNgFoodInput('');
-  };
-
-  const removeNgFood = (food: string) => {
-    setNgFoods((prev) => prev.filter((item) => item !== food));
   };
 
   const { data, isPending } = useQuery<Profile>({
@@ -140,13 +152,21 @@ function ProfileContent() {
   });
 
   useEffect(() => {
-    if (!data) return;
+    if (!data) {
+      setIsInitialized(false);
+      return;
+    }
+
+    const resolvedAreas = data.areas && data.areas.length > 0 ? data.areas : data.subAreas;
+    const trimmedName = (data.name ?? '').trim();
+    const trimmedBio = data.bio?.trim();
+
     form.reset({
       name: data.name ?? '',
       bio: data.bio ?? ''
     });
     setImagePreviewUrl(resolveProfileImageUrl(data.profileImageUrl ?? null));
-    setAreas(data.areas && data.areas.length > 0 ? data.areas : data.subAreas);
+    setAreas(resolvedAreas);
     setFavoriteMeals(data.favoriteMeals ?? []);
     setHobbies(data.hobbies ?? []);
     setNgFoods(data.ngFoods ?? []);
@@ -154,6 +174,19 @@ function ProfileContent() {
     setDrinkingStyle(data.drinkingStyle ?? null);
     setGoMealFrequency(data.goMealFrequency ?? null);
     setSuccessMessage(null);
+
+    lastSavedSnapshotRef.current = buildAutoSaveSnapshot({
+      name: trimmedName,
+      bio: trimmedBio ? trimmedBio : null,
+      favoriteMeals: data.favoriteMeals ?? [],
+      areas: resolvedAreas,
+      hobbies: data.hobbies ?? [],
+      defaultBudget: data.defaultBudget ?? null,
+      drinkingStyle: data.drinkingStyle ?? null,
+      goMealFrequency: data.goMealFrequency ?? null
+    });
+
+    setIsInitialized(true);
   }, [data, form]);
 
   const mutation = useMutation<Profile, any, UpdateProfileInput>({
@@ -164,17 +197,6 @@ function ProfileContent() {
     onSuccess: (profile) => {
       setSuccessMessage('プロフィールを保存しました');
       queryClient.setQueryData(['profile', token], profile);
-      form.reset({
-        name: profile.name ?? '',
-        bio: profile.bio ?? ''
-      });
-      setAreas(profile.areas && profile.areas.length > 0 ? profile.areas : profile.subAreas);
-      setFavoriteMeals(profile.favoriteMeals ?? []);
-      setHobbies(profile.hobbies ?? []);
-      setNgFoods(profile.ngFoods ?? []);
-      setDefaultBudget(profile.defaultBudget ?? null);
-      setDrinkingStyle(profile.drinkingStyle ?? null);
-      setGoMealFrequency(profile.goMealFrequency ?? null);
     },
     onError: (err: any) => {
       setError(err?.message ?? '保存に失敗しました');
@@ -208,27 +230,160 @@ function ProfileContent() {
     }
   };
 
-  const handleSubmit = form.handleSubmit(async (values) => {
+  const getCurrentProfilePayload = useCallback((): UpdateProfileInput => {
+    const values = form.getValues();
+    const trimmedName = values.name.trim();
+    const trimmedBio = values.bio?.trim();
+
+    return {
+      name: trimmedName,
+      bio: trimmedBio ? trimmedBio : null,
+      favoriteMeals,
+      ngFoods,
+      areas,
+      hobbies,
+      defaultBudget,
+      drinkingStyle,
+      goMealFrequency
+    };
+  }, [
+    form,
+    areas,
+    favoriteMeals,
+    hobbies,
+    ngFoods,
+    defaultBudget,
+    drinkingStyle,
+    goMealFrequency
+  ]);
+
+  const { mutateAsync } = mutation;
+  const isSaving = mutation.status === 'pending';
+
+  const handleSaveProfile = useCallback(async () => {
+    if (!token || isSaving) return;
     setError(null);
     setSuccessMessage(null);
 
-    try {
-      const payload: UpdateProfileInput = {
-        name: values.name.trim(),
-        bio: values.bio?.trim() ? values.bio.trim() : null,
-        favoriteMeals,
-        ngFoods,
-        areas,
-        hobbies,
-        defaultBudget,
-        drinkingStyle,
-        goMealFrequency
-      };
-      await mutation.mutateAsync(payload);
-    } catch (err: any) {
-      setError(err?.message ?? '保存に失敗しました');
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
     }
+
+    try {
+      const payload = getCurrentProfilePayload();
+      await mutateAsync(payload);
+      lastSavedSnapshotRef.current = buildAutoSaveSnapshot({
+        name: payload.name ?? '',
+        bio: payload.bio ?? null,
+        favoriteMeals: payload.favoriteMeals ?? [],
+        areas: payload.areas ?? [],
+        hobbies: payload.hobbies ?? [],
+        defaultBudget: payload.defaultBudget ?? null,
+        drinkingStyle: payload.drinkingStyle ?? null,
+        goMealFrequency: payload.goMealFrequency ?? null
+      });
+    } catch (err) {
+      console.error('Failed to save profile', err);
+    }
+  }, [token, isSaving, getCurrentProfilePayload, mutateAsync]);
+
+  const handleSubmit = form.handleSubmit(async () => {
+    await handleSaveProfile();
   });
+
+  useEffect(() => {
+    if (
+      !isInitialized ||
+      isSaving ||
+      !lastSavedSnapshotRef.current
+    ) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    const trimmedName = watchedName.trim();
+    const trimmedBio = watchedBio?.trim();
+    const snapshot = buildAutoSaveSnapshot({
+      name: trimmedName,
+      bio: trimmedBio ? trimmedBio : null,
+      favoriteMeals,
+      areas,
+      hobbies,
+      defaultBudget,
+      drinkingStyle,
+      goMealFrequency
+    });
+    if (snapshot === lastSavedSnapshotRef.current) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      handleSaveProfile();
+      saveTimeoutRef.current = null;
+    }, 1200);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, [
+    watchedName,
+    watchedBio,
+    areas,
+    favoriteMeals,
+    hobbies,
+    defaultBudget,
+    drinkingStyle,
+    goMealFrequency,
+    isInitialized,
+    isSaving,
+    handleSaveProfile
+  ]);
+
+  const addNgFood = useCallback(() => {
+    const value = ngFoodInput.trim();
+    if (!value || ngFoods.includes(value)) return;
+    setNgFoods((prev) => [...prev, value]);
+    setNgFoodInput('');
+    handleSaveProfile();
+  }, [ngFoodInput, ngFoods, handleSaveProfile]);
+
+  const removeNgFood = useCallback(
+    (food: string) => {
+      setNgFoods((prev) => prev.filter((item) => item !== food));
+      handleSaveProfile();
+    },
+    [handleSaveProfile]
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const flushOnUnload = () => {
+      if (!isInitialized) return;
+      handleSaveProfile();
+    };
+    window.addEventListener('beforeunload', flushOnUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', flushOnUnload);
+      flushOnUnload();
+    };
+  }, [handleSaveProfile, isInitialized]);
 
   const renderChips = (
     options: readonly string[],
@@ -245,10 +400,8 @@ function ProfileContent() {
               key={option}
               type="button"
               className={cn(
-                'rounded-full border px-3 py-1 text-xs font-semibold transition',
-                isSelected
-                  ? 'border-orange-500 bg-orange-500 text-white'
-                  : 'border-slate-200 bg-white text-slate-600'
+                chipBaseClass,
+                isSelected ? chipSelectedClass : chipUnselectedClass
               )}
               onClick={() => onToggle(option)}
             >
@@ -371,10 +524,8 @@ function ProfileContent() {
                   key={option}
                   type="button"
                   className={cn(
-                    'rounded-full border px-3 py-1 text-xs font-semibold transition',
-                    defaultBudget === option
-                      ? 'border-orange-500 bg-orange-500 text-white'
-                      : 'border-slate-200 bg-white text-slate-600'
+                    chipBaseClass,
+                    defaultBudget === option ? chipSelectedClass : chipUnselectedClass
                   )}
                   onClick={() => setDefaultBudget((prev) => (prev === option ? null : option))}
                 >
@@ -392,10 +543,8 @@ function ProfileContent() {
                       key={option}
                       type="button"
                       className={cn(
-                        'rounded-full border px-4 py-1 text-xs font-semibold transition',
-                        isSelected
-                          ? 'border-emerald-500 bg-emerald-500 text-white'
-                          : 'border-slate-200 bg-white text-slate-600'
+                        chipBaseClass,
+                        isSelected ? chipSelectedClass : chipUnselectedClass
                       )}
                       onClick={() => setDrinkingStyle((prev) => (prev === option ? null : option))}
                     >
@@ -415,10 +564,8 @@ function ProfileContent() {
                       key={option}
                       type="button"
                       className={cn(
-                        'rounded-full border px-3 py-1 text-xs font-semibold transition',
-                        isSelected
-                          ? 'border-sky-500 bg-sky-500 text-white'
-                          : 'border-slate-200 bg-white text-slate-600'
+                        chipBaseClass,
+                        isSelected ? chipSelectedClass : chipUnselectedClass
                       )}
                       onClick={() => setGoMealFrequency((prev) => (prev === option ? null : option))}
                     >
@@ -429,9 +576,6 @@ function ProfileContent() {
               </div>
             </Field>
 
-            <Button type="submit" className="w-full" disabled={mutation.status === 'pending'}>
-              {mutation.status === 'pending' ? '保存中...' : '保存する'}
-            </Button>
           </form>
         )}
       </Card>
