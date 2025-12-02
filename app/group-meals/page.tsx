@@ -1,44 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { CalendarDays, Clock3, Loader2, UserRound, Users } from 'lucide-react';
+import { useState } from 'react';
+import { CalendarDays, Clock3, UserRound, Users } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/auth-context';
 import {
-  useCreateGroupMeal,
   useDeleteGroupMeal,
   useGroupMeals,
   useJoinGroupMeal,
   useLeaveGroupMeal,
   useRespondGroupMeal
 } from '@/hooks/use-group-meals';
-import { ApiError, GroupMeal, GroupMealBudget, formatBudgetLabel, TimeSlot } from '@/lib/api';
+import { ApiError, GroupMeal, formatBudgetLabel } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
-import { useShellChrome } from '@/components/layout/app-shell';
-
-type CreateFormState = {
-  title: string;
-  date: string;
-  timeSlot: TimeSlot;
-  capacity: number;
-  meetingPlace: string;
-  budget: GroupMealBudget | null;
-};
 
 const statusMeta: Record<GroupMeal['status'], { label: string; className: string }> = {
   OPEN: { label: '募集中', className: 'bg-emerald-100 text-emerald-700' },
@@ -54,13 +33,6 @@ const myStatusMeta: Record<NonNullable<GroupMeal['myStatus']>, { label: string; 
   LATE: { label: '遅刻予定', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
   CANCELLED: { label: 'キャンセル', className: 'bg-slate-50 text-slate-500 border border-slate-200' }
 };
-
-const BUDGET_OPTIONS: { value: GroupMealBudget; label: string }[] = [
-  { value: 'UNDER_1000', label: '〜1000円' },
-  { value: 'UNDER_1500', label: '〜1500円' },
-  { value: 'UNDER_2000', label: '〜2000円' },
-  { value: 'OVER_2000', label: '2000円以上' }
-];
 
 function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
   try {
@@ -95,7 +67,9 @@ function GroupMealsContent() {
           <h1 className="text-3xl font-semibold text-slate-900">みんなでGO飯</h1>
           <p className="mt-1 text-sm text-slate-600">ランチ / ディナーの箱を作って、仲間を招待しましょう。</p>
         </div>
-        <CreateGroupMealDialog onError={setActionError} />
+        <Link href="/group-meals/new">
+          <Button size="sm">新しい箱を作る</Button>
+        </Link>
       </div>
 
       <ErrorBanner message={actionError || errorMessage} />
@@ -115,7 +89,9 @@ function GroupMealsContent() {
         <Card className="flex flex-col items-start gap-4">
           <h3 className="text-lg font-semibold text-slate-900">まだ箱がありません</h3>
           <p className="text-sm text-slate-600">「新しい箱を作る」から最初の募集を作成しましょう。</p>
-          <CreateGroupMealDialog inline onError={setActionError} />
+          <Link href="/group-meals/new">
+            <Button size="sm">新しい箱を作る</Button>
+          </Link>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -317,194 +293,5 @@ function GroupMealCard({
         )}
       </div>
     </Card>
-  );
-}
-
-function CreateGroupMealDialog({ onError, inline }: { onError?: (message: string | null) => void; inline?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formState, setFormState] = useState<CreateFormState>({
-    title: '',
-    date: '',
-    timeSlot: 'DAY',
-    capacity: 4,
-    meetingPlace: '',
-    budget: null
-  });
-  const shellChrome = useShellChrome();
-
-  useEffect(() => {
-    shellChrome?.setChromeHidden(open);
-    return () => {
-      shellChrome?.setChromeHidden(false);
-    };
-  }, [open, shellChrome]);
-  const createMutation = useCreateGroupMeal();
-
-  const resetForm = () => {
-    setFormState({ title: '', date: '', timeSlot: 'DAY', capacity: 4, meetingPlace: '', budget: null });
-  };
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    setFormError(null);
-    onError?.(null);
-
-    if (!formState.date) {
-      setFormError('日付を入力してください');
-      return;
-    }
-    if (formState.capacity < 3 || formState.capacity > 10) {
-      setFormError('定員は3〜10名で設定してください');
-      return;
-    }
-
-    const isoDate = new Date(formState.date).toISOString();
-
-    createMutation.mutate(
-      {
-        title: formState.title.trim() || undefined,
-        date: isoDate,
-        timeSlot: formState.timeSlot,
-        capacity: formState.capacity,
-        meetingPlace: formState.meetingPlace.trim() || null,
-        budget: formState.budget ?? null
-      },
-      {
-        onSuccess: () => {
-          resetForm();
-          setOpen(false);
-        },
-        onError: (err: any) => setFormError((err as ApiError | undefined)?.message ?? '作成に失敗しました')
-      }
-    );
-  };
-
-  const dialogTrigger = (
-    <DialogTrigger asChild>
-      <Button size={inline ? 'default' : 'sm'}>{createMutation.isPending ? '送信中...' : '新しい箱を作る'}</Button>
-    </DialogTrigger>
-  );
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        setFormError(null);
-        onError?.(null);
-        if (!next) resetForm();
-      }}
-    >
-      {inline ? dialogTrigger : <div className="flex justify-end">{dialogTrigger}</div>}
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>新しい箱を作る</DialogTitle>
-          <DialogDescription>日時と定員を決めて、メンバーを招待しましょう。</DialogDescription>
-        </DialogHeader>
-        <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-          <label className="flex flex-col gap-2 text-sm text-slate-600">
-            <span className="font-medium text-slate-900">タイトル（任意）</span>
-            <Input
-              placeholder="例: 金曜ランチ"
-              value={formState.title}
-              onChange={(event) => setFormState((prev) => ({ ...prev, title: event.target.value }))}
-            />
-          </label>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-sm text-slate-600">
-              <span className="font-medium text-slate-900">日付</span>
-              <Input
-                type="date"
-                value={formState.date}
-                onChange={(event) => setFormState((prev) => ({ ...prev, date: event.target.value }))}
-                required
-              />
-            </label>
-            <label className="flex flex-col gap-2 text-sm text-slate-600">
-              <span className="font-medium text-slate-900">時間帯</span>
-              <select
-                className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-base text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
-                value={formState.timeSlot}
-                onChange={(event) => setFormState((prev) => ({ ...prev, timeSlot: event.target.value as TimeSlot }))}
-              >
-                <option value="DAY">昼</option>
-                <option value="NIGHT">夜</option>
-              </select>
-            </label>
-          </div>
-          <label className="flex flex-col gap-2 text-sm text-slate-600">
-            <span className="font-medium text-slate-900">定員</span>
-            <select
-              className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-base text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
-              value={formState.capacity}
-              onChange={(event) => setFormState((prev) => ({ ...prev, capacity: Number(event.target.value) }))}
-            >
-              {Array.from({ length: 8 }, (_, index) => index + 3).map((num) => (
-                <option key={num} value={num}>
-                  {num} 名
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="space-y-4 text-sm text-slate-600">
-            <label className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white/60 px-4 py-3">
-              <span className="font-medium text-slate-900">集合場所</span>
-              <Input
-                placeholder="渋谷駅 ハチ公前"
-                value={formState.meetingPlace}
-                onChange={(event) => setFormState((prev) => ({ ...prev, meetingPlace: event.target.value }))}
-              />
-              <p className="text-xs text-slate-500">
-                例：早稲田キャンパス 8号館前 / 高田馬場駅 早稲田口 など
-              </p>
-            </label>
-            <div className="space-y-2">
-              <span className="font-medium text-slate-900">予算の目安</span>
-              <div className="grid grid-cols-2 gap-2">
-                {BUDGET_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        budget: prev.budget === option.value ? null : option.value
-                      }))
-                    }
-                    className={cn(
-                      'rounded-full border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
-                      formState.budget === option.value
-                        ? 'border-orange-500 bg-orange-50 text-orange-700'
-                        : 'border-slate-200 bg-white text-slate-700'
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <ErrorBanner message={formError} />
-          <div className="flex justify-end gap-3">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                キャンセル
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  作成中...
-                </>
-              ) : (
-                '作成する'
-              )}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }

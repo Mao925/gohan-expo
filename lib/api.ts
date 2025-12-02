@@ -93,9 +93,54 @@ export type GroupMealBudget = 'UNDER_1000' | 'UNDER_1500' | 'UNDER_2000' | 'OVER
 export type GroupMealParticipantStatus = 'INVITED' | 'JOINED' | 'DECLINED' | 'CANCELLED' | 'LATE';
 export type Weekday = 'SUN' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT';
 export type TimeSlot = 'DAY' | 'NIGHT';
+export type TimeBand = 'LUNCH' | 'DINNER';
 export type DrinkingStyle = 'NO_ALCOHOL' | 'SOMETIMES' | 'ENJOY_DRINKING';
 export type MealStyle = 'TALK_DEEP' | 'CASUAL_CHAT' | 'BRAINSTORM';
 export type GoMealFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+
+export type GroupMealPlace = {
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  googlePlaceId: string | null;
+};
+
+export type GroupMealSchedule = {
+  date: string; // 'YYYY-MM-DD'
+  timeBand: TimeBand;
+  meetingTime: string | null;
+  meetingTimeMinutes: number | null;
+  place: GroupMealPlace | null;
+};
+
+export type GroupMealScheduleInput = {
+  date: string; // 'YYYY-MM-DD'
+  timeBand: TimeBand;
+  meetingTime?: string | null;
+  place?: {
+    name: string;
+    address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    googlePlaceId?: string | null;
+  } | null;
+};
+
+export type InvitationLineStatus = 'UNSENT' | 'SENT_UNOPENED' | 'OPENED';
+
+export type GroupMealInvitationSummary = {
+  id: string;
+  userId: string;
+  name: string;
+  profileImageUrl: string | null;
+  invitedAt: string;
+  isCanceled: boolean;
+  canceledAt: string | null;
+  lineStatus: InvitationLineStatus;
+  firstOpenedAt: string | null;
+  lastOpenedAt: string | null;
+};
 
 export type Profile = {
   id: string;
@@ -150,6 +195,7 @@ export type GroupMeal = {
   remainingSlots: number;
   myStatus?: 'JOINED' | 'INVITED' | 'NONE' | 'LATE' | 'CANCELLED';
   participants: GroupMealParticipant[];
+  schedule?: GroupMealSchedule | null;
 };
 
 export type GroupMealCandidate = {
@@ -167,11 +213,10 @@ export type GroupMealCandidatesResponse = {
 
 export type CreateGroupMealInput = {
   title?: string;
-  date: string;
-  timeSlot: TimeSlot;
   capacity: number;
-  meetingPlace?: string | null;
   budget?: GroupMealBudget | null;
+  meetingPlace?: string | null;
+  schedule: GroupMealScheduleInput;
 };
 
 export async function fetchGroupMeals(token?: string | null): Promise<GroupMeal[]> {
@@ -179,11 +224,65 @@ export async function fetchGroupMeals(token?: string | null): Promise<GroupMeal[
 }
 
 export async function createGroupMeal(input: CreateGroupMealInput, token?: string | null): Promise<GroupMeal> {
+  const timeSlot: TimeSlot = input.schedule.timeBand === 'LUNCH' ? 'DAY' : 'NIGHT';
+  const payload = {
+    title: input.title?.trim() || undefined,
+    capacity: input.capacity,
+    budget: input.budget ?? null,
+    meetingPlace: input.meetingPlace ?? input.schedule.place?.name ?? null,
+    date: input.schedule.date,
+    timeSlot,
+    timeBand: input.schedule.timeBand,
+    meetingTime: input.schedule.meetingTime ?? null,
+    place: input.schedule.place ?? null
+  };
+
   return apiFetch('/api/group-meals', {
     method: 'POST',
-    data: input,
+    data: payload,
     token
   });
+}
+
+export async function getGroupMealInvitations(
+  groupMealId: string,
+  token?: string | null
+): Promise<GroupMealInvitationSummary[]> {
+  try {
+    const data = await apiFetch<GroupMealInvitationSummary[] | { invitations?: GroupMealInvitationSummary[] }>(
+      `/api/group-meals/${groupMealId}/invitations`,
+      { token }
+    );
+
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return data?.invitations ?? [];
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+export async function cancelGroupMealInvitation(invitationId: string, token?: string | null): Promise<void> {
+  await apiFetch<void>(`/api/group-meals/invitations/${invitationId}/cancel`, {
+    method: 'POST',
+    token
+  });
+}
+
+export async function markGroupMealInvitationOpened(invitationId: string, token?: string | null): Promise<void> {
+  try {
+    await apiFetch<void>(`/api/group-meals/invitations/${invitationId}/open`, {
+      method: 'POST',
+      token
+    });
+  } catch {
+    // Silently ignore errors when marking as opened.
+  }
 }
 
 export async function fetchGroupMealCandidates(
