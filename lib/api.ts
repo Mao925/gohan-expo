@@ -213,15 +213,10 @@ export type GroupMealCandidatesResponse = {
 
 export type CreateGroupMealInput = {
   title?: string;
-  date: string;
-  timeBand: TimeBand;
-  meetingTime?: string | null;
-  placeName?: string | null;
-  placeAddress?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
   capacity: number;
   budget?: GroupMealBudget | null;
+  meetingPlace?: string | null;
+  schedule: GroupMealScheduleInput;
 };
 
 export async function fetchGroupMeals(token?: string | null): Promise<GroupMeal[]> {
@@ -229,24 +224,18 @@ export async function fetchGroupMeals(token?: string | null): Promise<GroupMeal[
 }
 
 export async function createGroupMeal(input: CreateGroupMealInput, token?: string | null): Promise<GroupMeal> {
-  const payload: Record<string, unknown> = {
+  const timeSlot: TimeSlot = input.schedule.timeBand === 'LUNCH' ? 'DAY' : 'NIGHT';
+  const payload = {
     title: input.title?.trim() || undefined,
-    date: input.date,
-    timeBand: input.timeBand,
-    meetingTime: input.meetingTime ?? null,
     capacity: input.capacity,
-    budget: input.budget ?? null
+    budget: input.budget ?? null,
+    meetingPlace: input.meetingPlace ?? input.schedule.place?.name ?? null,
+    date: input.schedule.date,
+    timeSlot,
+    timeBand: input.schedule.timeBand,
+    meetingTime: input.schedule.meetingTime ?? null,
+    place: input.schedule.place ?? null
   };
-
-  if (input.placeName?.trim().length) {
-    payload.place = {
-      name: input.placeName.trim(),
-      address: input.placeAddress?.trim() || null,
-      latitude: input.latitude ?? null,
-      longitude: input.longitude ?? null,
-      googlePlaceId: null
-    };
-  }
 
   return apiFetch('/api/group-meals', {
     method: 'POST',
