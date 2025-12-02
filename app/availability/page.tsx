@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { MatchedMembersSection } from '@/components/availability/matched-members-section';
-import { PairScheduleDialog } from '@/components/availability/pair-schedule-dialog';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Card } from '@/components/ui/card';
@@ -69,8 +68,6 @@ function AvailabilityContent() {
   const { token, user } = useAuth();
   const [grid, setGrid] = useState<AvailabilityGrid>(createDefaultGrid());
   const [today, setToday] = useState<Date>(makeToday);
-  const [selectedMember, setSelectedMember] = useState<MemberRelationship | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isForbidden, setIsForbidden] = useState(false);
@@ -223,11 +220,6 @@ function AvailabilityContent() {
     mutation.mutate(gridToSlots(nextGrid));
   };
 
-  const handleOpenDialog = (member: MemberRelationship) => {
-    setSelectedMember(member);
-    setDialogOpen(true);
-  };
-
   if (user?.isAdmin) {
     return (
       <Card>
@@ -336,7 +328,6 @@ function AvailabilityContent() {
           </Card>
         ) : availabilityStatus && availabilityStatus.meetsRequirement ? (
           <MatchedMembersSection
-            onSelectMember={handleOpenDialog}
             highlightMeals={profileData?.favoriteMeals}
             showHeader={false}
           />
@@ -351,14 +342,6 @@ function AvailabilityContent() {
         )}
       </section>
 
-      <PairScheduleDialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) setSelectedMember(null);
-        }}
-        partner={selectedMember}
-      />
     </div>
   );
 }
