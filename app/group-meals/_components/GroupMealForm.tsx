@@ -252,17 +252,17 @@ export function GroupMealForm({
       <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/60 px-4 py-4">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-2">
-            <span className="font-medium text-slate-900">集合場所の名称</span>
+            <span className="font-medium text-slate-900">集合場所の最寄駅</span>
             <Input
-              placeholder="例: サイゼリヤ 高田馬場駅前店"
+              placeholder="例: 高田馬場駅"
               value={formState.placeName}
               onChange={(event) => setFormState((prev) => ({ ...prev, placeName: event.target.value }))}
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="font-medium text-slate-900">住所（任意）</span>
+            <span className="font-medium text-slate-900">飲食店名（任意）</span>
             <Input
-              placeholder="例: 東京都新宿区○○町"
+              placeholder="例: サイゼリヤ 高田馬場駅前店"
               value={formState.placeAddress}
               onChange={(event) => setFormState((prev) => ({ ...prev, placeAddress: event.target.value }))}
             />
