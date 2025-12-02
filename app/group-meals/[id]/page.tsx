@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CalendarDays, Clock3, Loader2, ShieldCheck, Users } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
@@ -12,7 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { useAuth } from '@/context/auth-context';
-import { useGroupMeals, useGroupMealCandidates, useInviteGroupMealCandidates } from '@/hooks/use-group-meals';
+import {
+  useGroupMeals,
+  useGroupMealCandidates,
+  useInviteGroupMealCandidates,
+  useGroupMealInvitations
+} from '@/hooks/use-group-meals';
 import { ApiError, GroupMeal, GroupMealCandidate, GroupMealParticipantStatus, formatBudgetLabel } from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
@@ -21,6 +26,8 @@ import {
   MEAL_STYLE_LABELS,
   GO_MEAL_FREQUENCY_LABELS
 } from '@/lib/profile-labels';
+import { InvitationList } from './InvitationList';
+import { InvitationOpenTracker } from './InvitationOpenTracker';
 
 function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
   try {
@@ -53,12 +60,18 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [actionError, setActionError] = useState<string | null>(null);
   const { data: groupMeals, isPending, error: groupMealsError } = useGroupMeals();
+  const searchParams = useSearchParams();
 
   const groupMeal = useMemo(
     () => groupMeals?.find((meal) => meal.id === params.id) ?? null,
     [groupMeals, params.id]
   );
   const isHost = Boolean(groupMeal && user?.id === groupMeal.host.userId);
+  const invitationId = searchParams.get('invitationId') ?? undefined;
+  const {
+    data: invitations,
+    isPending: invitationsPending
+  } = useGroupMealInvitations(params.id, { enabled: Boolean(isHost) });
   const {
     data: candidatesData,
     isPending: candidatesPending,
@@ -120,6 +133,16 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   const participantCount = joinedParticipants.length + (hostInParticipants ? 0 : 1);
   const remainingSlots = Math.max(groupMeal.capacity - participantCount, 0);
   const budgetLabel = formatBudgetLabel(groupMeal.budget);
+  const scheduleDate = groupMeal.schedule?.date ?? groupMeal.date;
+  const timeBandLabel =
+    groupMeal.schedule?.timeBand === 'LUNCH'
+      ? '昼'
+      : groupMeal.schedule?.timeBand === 'DINNER'
+        ? '夜'
+        : getTimeSlotLabel(groupMeal.timeSlot);
+  const meetingTimeLabel = groupMeal.schedule?.meetingTime ?? null;
+  const meetingPlaceName = groupMeal.schedule?.place?.name ?? groupMeal.meetingPlace;
+  const meetingPlaceAddress = groupMeal.schedule?.place?.address ?? null;
 
   const handleToggle = (userId: string) => {
     setActionError(null);
@@ -144,6 +167,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
 
   return (
     <div className="space-y-6">
+      {invitationId ? <InvitationOpenTracker invitationId={invitationId} /> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Group Meal</p>
@@ -169,17 +193,25 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
             </span>
           </div>
           <div className="mt-3 space-y-2 text-sm text-slate-700">
-            {groupMeal.meetingPlace && (
-              <div className="flex items-center gap-2">
-                <span>📍 集合場所</span>
-                <span className="font-medium">{groupMeal.meetingPlace}</span>
-              </div>
-            )}
+            <p className="text-sm font-semibold text-slate-900">
+              {formatDateLabel(scheduleDate, groupMeal.weekday)} {timeBandLabel}
+            </p>
+            <p className="text-sm text-slate-700">
+              <span className="font-medium text-slate-900">集合時間:</span>{' '}
+              {meetingTimeLabel ?? '集合時間は未設定です'}
+            </p>
+            <p className="text-sm text-slate-700">
+              <span className="font-medium text-slate-900">集合場所:</span>{' '}
+              {meetingPlaceName ?? '集合場所は未設定です'}
+            </p>
+            <p className="text-xs text-slate-500">
+              {meetingPlaceAddress ? `住所: ${meetingPlaceAddress}` : '住所は未設定です'}
+            </p>
             {budgetLabel && (
-            <div className="flex items-center gap-2">
-              <span>💰 予算の目安</span>
-              <span className="font-medium">{budgetLabel}</span>
-            </div>
+              <div className="flex items-center gap-2">
+                <span>💰 予算の目安</span>
+                <span className="font-medium">{budgetLabel}</span>
+              </div>
             )}
           </div>
         </div>
@@ -306,82 +338,95 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
       </Card>
 
       {isHost ? (
-        <Card className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">招待候補</h2>
-            <span className="text-sm text-slate-500">{candidatesData?.candidates.length ?? 0} 名</span>
-          </div>
-          {candidatesPending ? (
-            <p className="text-sm text-slate-600">候補を読み込み中...</p>
-          ) : !candidatesData ? (
-            <p className="text-sm text-slate-600">招待可能なメンバーがいません。</p>
-          ) : (
-            (() => {
-              const candidates = candidatesData.candidates ?? [];
-              const availableCandidates = candidates.filter((c) => c.isAvailableForSlot);
-              const unavailableCandidates = candidates.filter((c) => !c.isAvailableForSlot);
+        <>
+          <Card className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">招待候補</h2>
+              <span className="text-sm text-slate-500">{candidatesData?.candidates.length ?? 0} 名</span>
+            </div>
+            {candidatesPending ? (
+              <p className="text-sm text-slate-600">候補を読み込み中...</p>
+            ) : !candidatesData ? (
+              <p className="text-sm text-slate-600">招待可能なメンバーがいません。</p>
+            ) : (
+              (() => {
+                const candidates = candidatesData.candidates ?? [];
+                const availableCandidates = candidates.filter((c) => c.isAvailableForSlot);
+                const unavailableCandidates = candidates.filter((c) => !c.isAvailableForSlot);
 
-              return candidates.length === 0 ? (
-                <p className="text-sm text-slate-600">
-                  まだ招待できるメンバーがいません。他のメンバーがコミュニティに参加すると表示されます。
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  {availableCandidates.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-emerald-600">この箱の日程と合っているメンバー</p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {availableCandidates.map((candidate) => (
-                          <CandidateCard
-                            key={candidate.userId}
-                            candidate={candidate}
-                            highlight
-                            checked={selectedUserIds.includes(candidate.userId)}
-                            onToggle={() => handleToggle(candidate.userId)}
-                            groupMealBudget={groupMeal.budget}
-                          />
-                        ))}
+                return candidates.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    まだ招待できるメンバーがいません。他のメンバーがコミュニティに参加すると表示されます。
+                  </p>
+                ) : (
+                  <div className="space-y-6">
+                    {availableCandidates.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-emerald-600">この箱の日程と合っているメンバー</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {availableCandidates.map((candidate) => (
+                            <CandidateCard
+                              key={candidate.userId}
+                              candidate={candidate}
+                              highlight
+                              checked={selectedUserIds.includes(candidate.userId)}
+                              onToggle={() => handleToggle(candidate.userId)}
+                              groupMealBudget={groupMeal.budget}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
+                    ) : null}
 
-                  {unavailableCandidates.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-slate-500">今回の日程とは合っていないメンバー</p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {unavailableCandidates.map((candidate) => (
-                          <CandidateCard
-                            key={candidate.userId}
-                            candidate={candidate}
-                            highlight={false}
-                            checked={selectedUserIds.includes(candidate.userId)}
-                            onToggle={() => handleToggle(candidate.userId)}
-                            groupMealBudget={groupMeal.budget}
-                          />
-                        ))}
+                    {unavailableCandidates.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-slate-500">今回の日程とは合っていないメンバー</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {unavailableCandidates.map((candidate) => (
+                            <CandidateCard
+                              key={candidate.userId}
+                              candidate={candidate}
+                              highlight={false}
+                              checked={selectedUserIds.includes(candidate.userId)}
+                              onToggle={() => handleToggle(candidate.userId)}
+                              groupMealBudget={groupMeal.budget}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })()
-          )}
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <Button variant="secondary" size="sm" onClick={() => setSelectedUserIds([])} disabled={inviteMutation.isPending}>
-              クリア
-            </Button>
-            <Button onClick={handleInvite} disabled={inviteMutation.isPending || selectedUserIds.length === 0}>
-              {inviteMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  招待中...
-                </>
-              ) : (
-                `選択したメンバーを招待 (${selectedUserIds.length})`
-              )}
-            </Button>
-          </div>
-        </Card>
+                    ) : null}
+                  </div>
+                );
+              })()
+            )}
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button variant="secondary" size="sm" onClick={() => setSelectedUserIds([])} disabled={inviteMutation.isPending}>
+                クリア
+              </Button>
+              <Button onClick={handleInvite} disabled={inviteMutation.isPending || selectedUserIds.length === 0}>
+                {inviteMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    招待中...
+                  </>
+                ) : (
+                  `選択したメンバーを招待 (${selectedUserIds.length})`
+                )}
+              </Button>
+            </div>
+          </Card>
+          <Card className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">招待状況</h2>
+              <span className="text-sm text-slate-500">{invitations?.length ?? 0} 名</span>
+            </div>
+            {invitationsPending ? (
+              <p className="text-sm text-slate-600">招待状況を読み込み中...</p>
+            ) : (
+              <InvitationList invitations={invitations ?? []} groupMealId={groupMeal.id} />
+            )}
+          </Card>
+        </>
       ) : null}
     </div>
   );

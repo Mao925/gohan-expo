@@ -12,10 +12,13 @@ import {
   deleteGroupMeal,
   leaveGroupMeal,
   updateMyGroupMealStatus,
+  getGroupMealInvitations,
+  cancelGroupMealInvitation,
   CreateGroupMealInput,
   GroupMealCandidatesResponse,
   GroupMealParticipantStatus,
-  GroupMeal
+  GroupMeal,
+  GroupMealInvitationSummary
 } from '@/lib/api';
 
 export function useGroupMeals() {
@@ -146,6 +149,34 @@ export function useUpdateMyGroupMealStatus(groupMealId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+    }
+  });
+}
+
+export function useGroupMealInvitations(groupMealId: string, options?: { enabled?: boolean }) {
+  const { token } = useAuth();
+
+  return useQuery<GroupMealInvitationSummary[]>({
+    queryKey: ['groupMealInvitations', groupMealId, token],
+    queryFn: () => {
+      if (!token) throw new Error('ログインしてください');
+      return getGroupMealInvitations(groupMealId, token);
+    },
+    enabled: Boolean(groupMealId && token && options?.enabled !== false)
+  });
+}
+
+export function useCancelGroupMealInvitation(groupMealId: string) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invitationId: string) => {
+      if (!token) throw new Error('ログインしてください');
+      return cancelGroupMealInvitation(invitationId, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groupMealInvitations', groupMealId, token] });
     }
   });
 }
