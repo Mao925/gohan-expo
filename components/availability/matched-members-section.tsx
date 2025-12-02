@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { ErrorBanner } from '@/components/error-banner';
 import { FavoriteMealsList } from '@/components/favorite-meals-list';
 import { Button } from '@/components/ui/button';
@@ -12,18 +13,17 @@ import { apiFetch } from '@/lib/api';
 import { MemberRelationship, MemberRelationshipsResponse } from '@/lib/types';
 
 type MatchedMembersSectionProps = {
-  onSelectMember: (member: MemberRelationship) => void;
   highlightMeals?: string[];
   showHeader?: boolean;
 };
 
 export function MatchedMembersSection({
-  onSelectMember,
   highlightMeals,
   showHeader = true
 }: MatchedMembersSectionProps) {
   const { token, user } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const { data, isPending } = useQuery<MemberRelationshipsResponse>({
     queryKey: ['member-relationships', token],
@@ -60,12 +60,16 @@ export function MatchedMembersSection({
         <div className="space-y-3">
           {matches.map((member) => {
             const key = member.id ?? member.targetUserId ?? member.name;
+            const matchId = member.matchId ?? member.id;
             return (
               <Card
                 key={key}
                 role="button"
                 tabIndex={0}
-                onClick={() => onSelectMember(member)}
+                onClick={() => {
+                  if (!matchId) return;
+                  router.push(`/matches/${matchId}/schedule`);
+                }}
                 className="group relative flex cursor-pointer items-center justify-between gap-3 border border-orange-100 bg-white/80 px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand/40"
               >
                 <div className="min-w-0 flex-1">
@@ -78,8 +82,10 @@ export function MatchedMembersSection({
                   className="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelectMember(member);
+                    if (!matchId) return;
+                    router.push(`/matches/${matchId}/schedule`);
                   }}
+                  disabled={!matchId}
                 >
                   日程を合わせる
                 </Button>

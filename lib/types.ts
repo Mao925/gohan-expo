@@ -24,6 +24,7 @@ export type PartnerAnswer = 'YES' | 'NO' | 'UNANSWERED' | 'PENDING' | 'UNKNOWN' 
 
 export type MemberRelationship = {
   id: string;
+  matchId?: string;
   name: string;
   favoriteMeals: string[];
   profileImageUrl?: string | null;
