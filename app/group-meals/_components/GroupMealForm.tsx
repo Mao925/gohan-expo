@@ -7,7 +7,7 @@ import { ErrorBanner } from '@/components/error-banner';
 import { Input } from '@/components/ui/input';
 import { MeetingPlaceMap } from './MeetingPlaceMap';
 import { cn } from '@/lib/utils';
-import { ApiError, CreateGroupMealInput, GroupMeal, GroupMealBudget, GroupMealScheduleInput, TimeBand } from '@/lib/api';
+import { ApiError, CreateGroupMealInput, GroupMeal, GroupMealBudget, TimeBand } from '@/lib/api';
 import { useCreateGroupMeal } from '@/hooks/use-group-meals';
 
 type GroupMealFormValues = {
@@ -15,8 +15,8 @@ type GroupMealFormValues = {
   date: string;
   timeBand: TimeBand;
   meetingTime: string;
-  placeName: string;
-  placeAddress: string;
+  nearestStation: string;
+  restaurantName: string;
   latitude: number | null;
   longitude: number | null;
   capacity: number;
@@ -67,8 +67,8 @@ const createDefaultFormState = (): GroupMealFormValues => ({
   date: '',
   timeBand: 'LUNCH',
   meetingTime: DEFAULT_MEETING_TIME.LUNCH,
-  placeName: '',
-  placeAddress: '',
+  nearestStation: '',
+  restaurantName: '',
   latitude: null,
   longitude: null,
   capacity: 4,
@@ -139,8 +139,10 @@ export function GroupMealForm({
       return;
     }
 
-    if (!formState.placeName.trim()) {
-      setFormError('集合場所の名称を入力してください');
+    const nearestStation = formState.nearestStation.trim();
+    const restaurantName = formState.restaurantName.trim();
+    if (!nearestStation && !restaurantName) {
+      setFormError('集合場所の最寄駅または飲食店名を入力してください');
       return;
     }
 
@@ -149,25 +151,25 @@ export function GroupMealForm({
       return;
     }
 
-    const schedule: GroupMealScheduleInput = {
-      date: formState.date,
-      timeBand: formState.timeBand,
-      meetingTime: formState.meetingTime,
-      place: {
-        name: formState.placeName.trim(),
-        address: formState.placeAddress.trim() || null,
-        latitude: formState.latitude,
-        longitude: formState.longitude,
-        googlePlaceId: null
-      }
-    };
+    const placeName = restaurantName.length > 0 ? restaurantName : nearestStation;
+    const placeAddress =
+      restaurantName.length > 0
+        ? restaurantName
+        : nearestStation.length > 0
+        ? nearestStation
+        : null;
 
     const input: CreateGroupMealInput = {
       title: formState.title.trim() || undefined,
+      date: formState.date,
+      timeBand: formState.timeBand,
+      meetingTime: formState.meetingTime || null,
+      placeName: placeName || undefined,
+      placeAddress,
+      latitude: formState.latitude ?? null,
+      longitude: formState.longitude ?? null,
       capacity: formState.capacity,
-      budget: formState.budget ?? null,
-      meetingPlace: formState.placeName.trim(),
-      schedule
+      budget: formState.budget ?? null
     };
 
     createMutation.mutate(input, {
@@ -255,16 +257,16 @@ export function GroupMealForm({
             <span className="font-medium text-slate-900">集合場所の最寄駅</span>
             <Input
               placeholder="例: 高田馬場駅"
-              value={formState.placeName}
-              onChange={(event) => setFormState((prev) => ({ ...prev, placeName: event.target.value }))}
+              value={formState.nearestStation}
+              onChange={(event) => setFormState((prev) => ({ ...prev, nearestStation: event.target.value }))}
             />
           </label>
           <label className="flex flex-col gap-2">
             <span className="font-medium text-slate-900">飲食店名（任意）</span>
             <Input
               placeholder="例: サイゼリヤ 高田馬場駅前店"
-              value={formState.placeAddress}
-              onChange={(event) => setFormState((prev) => ({ ...prev, placeAddress: event.target.value }))}
+              value={formState.restaurantName}
+              onChange={(event) => setFormState((prev) => ({ ...prev, restaurantName: event.target.value }))}
             />
           </label>
         </div>
