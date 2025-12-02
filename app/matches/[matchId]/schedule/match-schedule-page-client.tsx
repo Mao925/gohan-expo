@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -57,6 +57,7 @@ const getPairErrorMessage = (error: unknown) => {
 
 export function MatchSchedulePageClient({ matchId }: MatchSchedulePageClientProps) {
   const { token, user } = useAuth();
+  const router = useRouter();
 
   const { data: profileData } = useQuery<Profile>({
     queryKey: ['profile', token],
@@ -144,12 +145,9 @@ export function MatchSchedulePageClient({ matchId }: MatchSchedulePageClientProp
             <Button variant="secondary" size="sm" onClick={() => refetchMatch()}>
               再読み込み
             </Button>
-            <Link
-              href="/matches"
-              className="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
-            >
-              マッチ一覧へ戻る
-            </Link>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/availability')}>
+              日程調整へ戻る
+            </Button>
           </div>
         </>
       ) : !matchData ? (
@@ -160,12 +158,9 @@ export function MatchSchedulePageClient({ matchId }: MatchSchedulePageClientProp
             <>
               <ErrorBanner message="このマッチのお相手を確認できませんでした。" />
               <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href="/matches"
-                  className="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
-                >
-                  マッチ一覧へ戻る
-                </Link>
+                <Button variant="ghost" size="sm" onClick={() => router.push('/availability')}>
+                  日程調整へ戻る
+                </Button>
               </div>
             </>
           ) : pairLoading && !pairAvailability ? (
