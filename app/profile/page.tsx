@@ -258,7 +258,7 @@ function ProfileContent() {
   ]);
 
   const { mutateAsync } = mutation;
-  const isSaving = mutation.isLoading;
+  const isSaving = mutation.status === 'pending';
 
   const handleSaveProfile = useCallback(async () => {
     if (!token || isSaving) return;
@@ -274,14 +274,14 @@ function ProfileContent() {
       const payload = getCurrentProfilePayload();
       await mutateAsync(payload);
       lastSavedSnapshotRef.current = buildAutoSaveSnapshot({
-        name: payload.name,
-        bio: payload.bio,
-        favoriteMeals: payload.favoriteMeals,
-        areas: payload.areas,
-        hobbies: payload.hobbies,
-        defaultBudget: payload.defaultBudget,
-        drinkingStyle: payload.drinkingStyle,
-        goMealFrequency: payload.goMealFrequency
+        name: payload.name ?? '',
+        bio: payload.bio ?? null,
+        favoriteMeals: payload.favoriteMeals ?? [],
+        areas: payload.areas ?? [],
+        hobbies: payload.hobbies ?? [],
+        defaultBudget: payload.defaultBudget ?? null,
+        drinkingStyle: payload.drinkingStyle ?? null,
+        goMealFrequency: payload.goMealFrequency ?? null
       });
     } catch (err) {
       console.error('Failed to save profile', err);
@@ -295,7 +295,7 @@ function ProfileContent() {
   useEffect(() => {
     if (
       !isInitialized ||
-      mutation.isLoading ||
+      isSaving ||
       !lastSavedSnapshotRef.current
     ) {
       if (saveTimeoutRef.current) {
@@ -350,7 +350,7 @@ function ProfileContent() {
     drinkingStyle,
     goMealFrequency,
     isInitialized,
-    mutation.isLoading,
+    isSaving,
     handleSaveProfile
   ]);
 
