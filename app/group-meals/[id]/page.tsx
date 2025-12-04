@@ -103,6 +103,22 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
     );
   }, [groupMeal, user]);
 
+  const hostParticipant = useMemo(() => {
+    if (!groupMeal) return null;
+    return (
+      groupMeal.participants.find(
+        (participant) => participant.userId === groupMeal.host.userId
+      ) ?? null
+    );
+  }, [groupMeal]);
+
+  const nonHostParticipants = useMemo(() => {
+    if (!groupMeal) return [];
+    return groupMeal.participants.filter(
+      (participant) => participant.userId !== groupMeal.host.userId
+    );
+  }, [groupMeal]);
+
   const myParticipantStatus = myParticipant?.status ?? null;
   const canRespondAsInvitee =
     Boolean(myParticipant) &&
@@ -399,51 +415,96 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
       </Card>
 
       <Card className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">参加メンバー</h2>
-          <span className="text-sm text-slate-500">
-            {groupMeal.participants.length} 名
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">参加メンバー</h2>
+            <span className="text-sm text-slate-500">
+              定員 {groupMeal.capacity.toLocaleString()}人
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+            <span>
+              参加メンバー: {groupMeal.joinedCount.toLocaleString()} /{' '}
+              {groupMeal.capacity.toLocaleString()}人
+            </span>
+            <span>
+              {groupMeal.remainingSlots > 0
+                ? `残り${groupMeal.remainingSlots.toLocaleString()}枠`
+                : '満席'}
+            </span>
+          </div>
         </div>
-        {groupMeal.participants.length === 0 ? (
-          <p className="text-sm text-slate-600">まだメンバーがいません。</p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {groupMeal.participants.map((participant) => (
-              <div
-                key={participant.userId}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <ProfileAvatar
-                      imageUrl={participant.profileImageUrl ?? undefined}
-                      name={participant.name}
-                      size="sm"
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <ProfileAvatar
+                  imageUrl={groupMeal.host.profileImageUrl ?? undefined}
+                  name={groupMeal.host.name}
+                  size="sm"
+                />
+                <div className="flex flex-1 flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-900">
+                      {groupMeal.host.name}
+                    </span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      主催者
+                    </span>
+                  </div>
+                  {hostParticipant ? (
+                    <FavoriteMealsList
+                      meals={hostParticipant.favoriteMeals}
+                      variant="pill"
                     />
-                    <div className="flex flex-1 flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">
-                          {participant.name}
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
-                          {myStatusLabel(participant.status)}
-                        </span>
-                      </div>
-                      <FavoriteMealsList
-                        meals={participant.favoriteMeals}
-                        variant="pill"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {renderParticipantStatusBadge(participant.status)}
-                  </div>
+                  ) : null}
                 </div>
               </div>
-            ))}
+              <div className="flex flex-col items-end gap-1">
+                {hostParticipant ? renderParticipantStatusBadge(hostParticipant.status) : null}
+              </div>
+            </div>
           </div>
-        )}
+          {nonHostParticipants.length === 0 ? (
+            <p className="text-sm text-slate-600">まだメンバーがいません。</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {nonHostParticipants.map((participant) => (
+                <div
+                  key={participant.userId}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <ProfileAvatar
+                        imageUrl={participant.profileImageUrl ?? undefined}
+                        name={participant.name}
+                        size="sm"
+                      />
+                      <div className="flex flex-1 flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-900">
+                            {participant.name}
+                          </span>
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
+                            {myStatusLabel(participant.status)}
+                          </span>
+                        </div>
+                        <FavoriteMealsList
+                          meals={participant.favoriteMeals}
+                          variant="pill"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {renderParticipantStatusBadge(participant.status)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Card>
 
       {isHost ? (

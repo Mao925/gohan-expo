@@ -200,7 +200,10 @@ function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError 
     });
   };
 
-  const participantPreview = meal.participants.slice(0, 3);
+  const hostUserId = meal.host.userId;
+  const nonHostParticipants = meal.participants.filter((participant) => participant.userId !== hostUserId);
+  const participantPreview = nonHostParticipants.slice(0, 3);
+  const additionalParticipantCount = Math.max(nonHostParticipants.length - participantPreview.length, 0);
 
   return (
     <Card className="space-y-4">
@@ -291,21 +294,44 @@ function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError 
 
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-slate-400">参加者</p>
-        <div className="mt-2 flex flex-wrap gap-3">
-          {participantPreview.map((participant) => (
-            <div
-              key={participant.userId}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm"
-            >
-              <ProfileAvatar imageUrl={participant.profileImageUrl ?? undefined} name={participant.name} size="sm" />
-              <span>{participant.name}</span>
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+            <ProfileAvatar
+              imageUrl={meal.host.profileImageUrl ?? undefined}
+              name={meal.host.name}
+              size="sm"
+            />
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-slate-900">{meal.host.name}</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">主催者</span>
             </div>
-          ))}
-          {meal.participants.length > participantPreview.length ? (
-            <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-              他 {meal.participants.length - participantPreview.length} 名
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+            <span>
+              参加メンバー: {meal.joinedCount.toLocaleString()} / {meal.capacity.toLocaleString()}人
             </span>
-          ) : null}
+            <span>{meal.remainingSlots > 0 ? `残り${meal.remainingSlots.toLocaleString()}枠` : '満席'}</span>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {participantPreview.map((participant) => (
+              <div
+                key={participant.userId}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm"
+              >
+                <ProfileAvatar
+                  imageUrl={participant.profileImageUrl ?? undefined}
+                  name={participant.name}
+                  size="sm"
+                />
+                <span>{participant.name}</span>
+              </div>
+            ))}
+            {additionalParticipantCount > 0 ? (
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                他 {additionalParticipantCount} 名
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 
