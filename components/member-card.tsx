@@ -1,5 +1,7 @@
 "use client";
 
+import Link from 'next/link';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,7 +13,7 @@ import { LikeStatus, Member } from '@/lib/types';
 import {
   DRINKING_STYLE_LABELS,
   MEAL_STYLE_LABELS,
-  GO_MEAL_FREQUENCY_LABELS
+  GO_MEAL_FREQUENCY_LABELS,
 } from '@/lib/profile-labels';
 
 type MemberCardProps = {
@@ -20,7 +22,6 @@ type MemberCardProps = {
   onToggleLike?: (memberId: string, currentStatus: LikeStatus) => void;
   onDeleteUser?: () => void;
   isUpdating?: boolean;
-  onViewProfile?: (userId: string) => void;
 };
 
 export function MemberCard({
@@ -29,7 +30,6 @@ export function MemberCard({
   onToggleLike,
   onDeleteUser,
   isUpdating,
-  onViewProfile
 }: MemberCardProps) {
   const effectiveStatus: LikeStatus = member.myLikeStatus ?? 'NONE';
   const profile = member.profile ?? null;
@@ -97,52 +97,46 @@ export function MemberCard({
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end justify-center gap-2">
-            {isAdmin ? (
-              <div className="flex flex-col items-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="rounded-full px-4 py-1 text-xs font-semibold bg-red-500 text-white hover:bg-red-600"
-                  onClick={onDeleteUser}
-                >
-                  ユーザー削除
-                </Button>
-                {onViewProfile ? (
+            <div className="flex flex-col items-end justify-center gap-2">
+              {isAdmin ? (
+                <div className="flex flex-col items-end gap-2">
                   <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-full px-4 py-1 text-xs font-semibold bg-red-500 text-white hover:bg-red-600"
+                    onClick={onDeleteUser}
+                  >
+                    ユーザー削除
+                  </Button>
+                  <Button
+                    asChild
                     size="sm"
                     variant="ghost"
                     className="border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                    onClick={() => onViewProfile(member.id)}
                   >
-                    Profile
+                    <Link href={`/members/${member.id}/profile`}>Profile</Link>
                   </Button>
-                ) : null}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <LikeToggleButton
-                  status={effectiveStatus}
-                  onClick={() => onToggleLike?.(member.id, effectiveStatus)}
-                  disabled={isUpdating}
-                  isLoading={isUpdating}
-                />
-                {onViewProfile ? (
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <LikeToggleButton
+                    status={effectiveStatus}
+                    onClick={() => onToggleLike?.(member.id, effectiveStatus)}
+                    disabled={isUpdating}
+                    isLoading={isUpdating}
+                  />
                   <Button
-                    type="button"
+                    asChild
                     size="sm"
                     variant="ghost"
                     className="border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                    onClick={() => onViewProfile(member.id)}
                   >
-                    Profile
+                    <Link href={`/members/${member.id}/profile`}>Profile</Link>
                   </Button>
-                ) : null}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
         </div>
       </div>
     </Card>
