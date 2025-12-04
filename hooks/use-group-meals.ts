@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/auth-context';
 import {
   ApiError,
-  CreateGroupMealInput,
+  CreateGroupMealPayload,
   GroupMeal,
   GroupMealCandidatesResponse,
   GroupMealInvitationSummary,
@@ -150,8 +150,13 @@ export function useCreateGroupMeal() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation<GroupMeal, ApiError, CreateGroupMealInput>({
-    mutationFn: (input) => createGroupMeal({ ...input, mode: input.mode ?? 'REAL' }, token),
+  return useMutation<GroupMeal, ApiError, CreateGroupMealPayload>({
+    mutationFn: (payload) => {
+      if (!token) {
+        throw new ApiError('認証が必要です', 401);
+      }
+      return createGroupMeal(token, { ...payload, mode: payload.mode ?? 'REAL' });
+    },
     onSuccess: (created) => {
       queryClient.invalidateQueries({
         queryKey: [...GROUP_MEALS_QUERY_KEY, created.mode, token]
