@@ -69,7 +69,7 @@ export type JoinRequest = {
 };
 
 export type GroupMealParticipant = import('@/lib/api').GroupMealParticipant;
-export type GroupMealHost = import('@/lib/api').GroupMeal['host'];
+export type GroupMealHost = import('@/lib/api').GroupMealHost;
 export type GroupMealInviteCandidate = import('@/lib/api').GroupMealCandidate;
 
 export type Weekday = import('@/lib/api').Weekday;

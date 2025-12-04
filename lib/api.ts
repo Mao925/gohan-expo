@@ -180,6 +180,12 @@ export type GroupMealParticipant = {
   profileImageUrl?: string | null;
 };
 
+export type GroupMealHost = {
+  userId: string;
+  name: string;
+  profileImageUrl?: string | null;
+};
+
 export type GroupMeal = {
   id: string;
   title: string;
@@ -189,11 +195,7 @@ export type GroupMeal = {
   capacity: number;
   status: GroupMealStatus;
   mode: GroupMealMode;
-  host: {
-    userId: string;
-    name: string;
-    profileImageUrl?: string | null;
-  };
+  host: GroupMealHost;
   meetingPlace: string | null;
   nearestStation: string | null;
   schedule: GroupMealSchedule | null;
