@@ -177,6 +177,7 @@ export type PublicUserProfile = {
   name: string;
   favoriteMeals: string[];
   profileImageUrl: string | null;
+  ngFoods: string[];
   areas: string[];
   hobbies: string[];
   mainArea: string | null;
