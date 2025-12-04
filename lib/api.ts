@@ -171,6 +171,24 @@ export type Profile = {
   updatedAt: string;
 };
 
+export type PublicUserProfile = {
+  id: string;
+  userId: string;
+  name: string;
+  favoriteMeals: string[];
+  profileImageUrl: string | null;
+  areas: string[];
+  hobbies: string[];
+  mainArea: string | null;
+  subAreas: string[];
+  defaultBudget: number | null;
+  drinkingStyle: string | null;
+  mealStyle: string | null;
+  goMealFrequency: string | null;
+  bio: string;
+  completionRate: number;
+};
+
 export type GroupMealParticipant = {
   userId: string;
   isHost?: boolean;
@@ -430,6 +448,10 @@ export async function fetchMembers(): Promise<Member[]> {
   }
 
   return [];
+}
+
+export async function fetchPublicUserProfile(userId: string): Promise<PublicUserProfile> {
+  return apiFetch<PublicUserProfile>(`/api/users/${userId}/profile`);
 }
 
 export async function fetchMatches(token?: string | null): Promise<MatchSummary[]> {

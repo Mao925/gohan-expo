@@ -20,6 +20,7 @@ type MemberCardProps = {
   onToggleLike?: (memberId: string, currentStatus: LikeStatus) => void;
   onDeleteUser?: () => void;
   isUpdating?: boolean;
+  onViewProfile?: (userId: string) => void;
 };
 
 export function MemberCard({
@@ -27,7 +28,8 @@ export function MemberCard({
   isAdmin,
   onToggleLike,
   onDeleteUser,
-  isUpdating
+  isUpdating,
+  onViewProfile
 }: MemberCardProps) {
   const effectiveStatus: LikeStatus = member.myLikeStatus ?? 'NONE';
   const profile = member.profile ?? null;
@@ -97,23 +99,47 @@ export function MemberCard({
           </div>
           <div className="flex flex-col items-end justify-center gap-2">
             {isAdmin ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="rounded-full px-4 py-1 text-xs font-semibold bg-red-500 text-white hover:bg-red-600"
-                onClick={onDeleteUser}
-              >
-                ユーザー削除
-              </Button>
+              <div className="flex flex-col items-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full px-4 py-1 text-xs font-semibold bg-red-500 text-white hover:bg-red-600"
+                  onClick={onDeleteUser}
+                >
+                  ユーザー削除
+                </Button>
+                {onViewProfile ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    onClick={() => onViewProfile(member.id)}
+                  >
+                    Profile
+                  </Button>
+                ) : null}
+              </div>
             ) : (
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
                 <LikeToggleButton
                   status={effectiveStatus}
                   onClick={() => onToggleLike?.(member.id, effectiveStatus)}
                   disabled={isUpdating}
                   isLoading={isUpdating}
                 />
+                {onViewProfile ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    onClick={() => onViewProfile(member.id)}
+                  >
+                    Profile
+                  </Button>
+                ) : null}
               </div>
             )}
           </div>

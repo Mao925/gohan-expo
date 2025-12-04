@@ -10,6 +10,7 @@ export type GroupMealBudget = import('@/lib/api').GroupMealBudget;
 export type DrinkingStyle = import('@/lib/api').DrinkingStyle;
 export type MealStyle = import('@/lib/api').MealStyle;
 export type GoMealFrequency = import('@/lib/api').GoMealFrequency;
+export type PublicUserProfile = import('@/lib/api').PublicUserProfile;
 
 export type CommunityStatus = 'UNAPPLIED' | 'PENDING' | 'APPROVED';
 
