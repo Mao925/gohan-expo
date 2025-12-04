@@ -7,7 +7,7 @@ import { ErrorBanner } from '@/components/error-banner';
 import { Input } from '@/components/ui/input';
 import { MeetingPlaceMap } from './MeetingPlaceMap';
 import { cn } from '@/lib/utils';
-import { ApiError, CreateGroupMealInput, GroupMeal, GroupMealBudget, TimeBand } from '@/lib/api';
+import { ApiError, CreateGroupMealInput, GroupMeal, GroupMealBudget, GroupMealMode, TimeBand } from '@/lib/api';
 import { useCreateGroupMeal } from '@/hooks/use-group-meals';
 
 type GroupMealFormValues = {
@@ -21,6 +21,7 @@ type GroupMealFormValues = {
   longitude: number | null;
   capacity: number;
   budget: GroupMealBudget | null;
+  mode: GroupMealMode;
 };
 
 type GroupMealFormProps = {
@@ -72,7 +73,8 @@ const createDefaultFormState = (): GroupMealFormValues => ({
   latitude: null,
   longitude: null,
   capacity: 4,
-  budget: null
+  budget: null,
+  mode: 'REAL'
 });
 
 function buildInitialFormState(initialValues?: Partial<GroupMealFormValues>): GroupMealFormValues {
@@ -83,12 +85,14 @@ function buildInitialFormState(initialValues?: Partial<GroupMealFormValues>): Gr
   const base = createDefaultFormState();
   const timeBand = initialValues.timeBand ?? base.timeBand;
   const meetingTime = initialValues.meetingTime ?? DEFAULT_MEETING_TIME[timeBand];
+  const mode = initialValues.mode ?? base.mode;
 
   return {
     ...base,
     ...initialValues,
     timeBand,
-    meetingTime
+    meetingTime,
+    mode
   };
 }
 
@@ -169,7 +173,8 @@ export function GroupMealForm({
       latitude: formState.latitude ?? null,
       longitude: formState.longitude ?? null,
       capacity: formState.capacity,
-      budget: formState.budget ?? null
+      budget: formState.budget ?? null,
+      mode: formState.mode
     };
 
     createMutation.mutate(input, {
@@ -192,6 +197,38 @@ export function GroupMealForm({
           onChange={(event) => setFormState((prev) => ({ ...prev, title: event.target.value }))}
         />
       </label>
+      <div className="space-y-2">
+        <span className="font-medium text-slate-900">開催形式</span>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFormState((prev) => ({ ...prev, mode: 'REAL' }))}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
+              formState.mode === 'REAL'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-slate-200 bg-white text-slate-700'
+            )}
+          >
+            リアルでGO飯
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormState((prev) => ({ ...prev, mode: 'MEET' }))}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50',
+              formState.mode === 'MEET'
+                ? 'border-sky-500 bg-sky-50 text-sky-700'
+                : 'border-slate-200 bg-white text-slate-700'
+            )}
+          >
+            MeetでGO飯
+          </button>
+        </div>
+        <p className="text-xs text-slate-500">
+          箱の種類を選ぶと、一覧のタブにも同じモードで表示されます。
+        </p>
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-2">
           <span className="font-medium text-slate-900">日付</span>

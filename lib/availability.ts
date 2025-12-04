@@ -27,8 +27,6 @@ const TIMESLOT_LABEL_MAP: Record<TimeSlot, string> = TIMESLOTS.reduce(
 );
 
 const DEFAULT_STATUS: AvailabilityStatus = 'UNAVAILABLE';
-const VALID_STATUSES: AvailabilityStatus[] = ['AVAILABLE', 'UNAVAILABLE'];
-
 const JS_DAY_TO_WEEKDAY: Weekday[] = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export type Next7Day = {
@@ -57,6 +55,20 @@ export function createDefaultGrid(): AvailabilityGrid {
 }
 
 // Convert API response into a 2D grid while filling missing slots as UNAVAILABLE.
+export type AvailabilityMark = 'CIRCLE' | 'TRIANGLE' | 'CROSS';
+
+export function availabilityStatusToMark(status: AvailabilityStatus): AvailabilityMark {
+  if (status === 'AVAILABLE') return 'CIRCLE';
+  if (status === 'MEET_ONLY') return 'TRIANGLE';
+  return 'CROSS';
+}
+
+export function availabilityMarkToStatus(mark: AvailabilityMark): AvailabilityStatus {
+  if (mark === 'CIRCLE') return 'AVAILABLE';
+  if (mark === 'TRIANGLE') return 'MEET_ONLY';
+  return 'UNAVAILABLE';
+}
+
 export function slotsToGrid(slots: AvailabilitySlotDto[] | null | undefined): AvailabilityGrid {
   const grid = createDefaultGrid();
   if (!slots) return grid;
@@ -79,23 +91,6 @@ export function gridToSlots(grid: AvailabilityGrid): AvailabilitySlotDto[] {
 }
 
 // Prepare payload for API: only send AVAILABLE slots, treat others as implicit UNAVAILABLE.
-export function gridToPayload(grid: AvailabilityGrid): AvailabilitySlotDto[] {
-  const seen = new Set<string>();
-  const payload: AvailabilitySlotDto[] = [];
-  for (const { value: weekday } of WEEKDAYS) {
-    for (const { value: timeSlot } of TIMESLOTS) {
-      const status = grid?.[weekday]?.[timeSlot];
-      if (!VALID_STATUSES.includes(status as AvailabilityStatus)) continue;
-      if (status !== 'AVAILABLE') continue;
-      const key = `${weekday}-${timeSlot}`;
-      if (seen.has(key)) continue;
-      payload.push({ weekday, timeSlot, status: status as AvailabilityStatus });
-      seen.add(key);
-    }
-  }
-  return payload;
-}
-
 export function mapJsDayToWeekdayEnum(dayIndex: number): Weekday {
   return JS_DAY_TO_WEEKDAY[dayIndex] ?? 'SUN';
 }
