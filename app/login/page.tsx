@@ -115,20 +115,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </form>
-      {showSeedInfo ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-orange-200 bg-orange-50 p-4 text-sm text-slate-600">
-          <p className="font-semibold text-slate-800">開発用アカウント</p>
-          <p className="mt-1">DB をリセットした場合などは以下の seed 情報でログインできます。</p>
-          <div className="mt-3 space-y-1">
-            <p>
-              <span className="font-medium text-slate-800">Email:</span> {seedEmail}
-            </p>
-            <p>
-              <span className="font-medium text-slate-800">Password:</span> {seedPassword}
-            </p>
-          </div>
-        </div>
-      ) : null}
     </Card>
   );
 }

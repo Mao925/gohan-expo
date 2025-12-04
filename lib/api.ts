@@ -195,6 +195,7 @@ export type GroupMeal = {
     profileImageUrl?: string | null;
   };
   meetingPlace: string | null;
+  nearestStation: string | null;
   schedule: GroupMealSchedule | null;
   budget: GroupMealBudget | null;
   joinedCount: number;
