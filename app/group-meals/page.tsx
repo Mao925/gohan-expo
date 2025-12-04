@@ -233,7 +233,12 @@ function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError 
               </span>
             </span>
           </p>
-          {meetingPlaceName ? (
+          {meal.mode === 'REAL' ? (
+            <p className="text-sm text-slate-600">
+              <span className="font-semibold text-slate-900">集合場所:</span>{' '}
+              {meetingPlaceName ?? '未設定'}
+            </p>
+          ) : meetingPlaceName ? (
             <p className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900">集合場所:</span> {meetingPlaceName}
             </p>
@@ -241,7 +246,14 @@ function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError 
           {meetingPlaceAddress ? (
             <p className="text-xs text-slate-500">住所: {meetingPlaceAddress}</p>
           ) : null}
-          {budgetLabel ? (
+          <p className="text-xs text-slate-500">
+            定員: {meal.capacity.toLocaleString()}人
+          </p>
+          {meal.mode === 'REAL' ? (
+            <p className="text-xs text-slate-500">
+              <span className="font-semibold text-slate-900">予算:</span> {budgetLabel ?? '未設定'}
+            </p>
+          ) : budgetLabel ? (
             <p className="text-xs text-slate-500">予算: {budgetLabel}</p>
           ) : null}
           {talkTopics.length > 0 ? (
