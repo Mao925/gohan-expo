@@ -72,9 +72,9 @@ export type GroupMealParticipant = import('@/lib/api').GroupMealParticipant;
 export type GroupMealHost = import('@/lib/api').GroupMeal['host'];
 export type GroupMealInviteCandidate = import('@/lib/api').GroupMealCandidate;
 
-export type Weekday = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
-export type TimeSlot = 'DAY' | 'NIGHT';
-export type AvailabilityStatus = 'AVAILABLE' | 'UNAVAILABLE';
-export type AvailabilitySlotDto = { weekday: Weekday; timeSlot: TimeSlot; status: AvailabilityStatus };
+export type Weekday = import('@/lib/api').Weekday;
+export type TimeSlot = import('@/lib/api').TimeSlot;
+export type AvailabilityStatus = import('@/lib/api').AvailabilityStatus;
+export type AvailabilitySlotDto = import('@/lib/api').AvailabilitySlotDto;
 export type AvailabilityGrid = Record<Weekday, Record<TimeSlot, AvailabilityStatus>>;
 export type OverlapSlotDto = { weekday: Weekday; timeSlot: TimeSlot };

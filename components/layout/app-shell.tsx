@@ -29,7 +29,7 @@ const COMMON_NAV_ITEMS: NavItem[] = [
   { href: "/match/like", label: "ふたりでGO飯", icon: HeartHandshake, showInShell: false },
   { href: "/availability", label: "日程調整", icon: CalendarDays },
   { href: "/group-meals", label: "みんなでGO飯", icon: UtensilsCrossed },
-  { href: "/profile", label: "プロフィール", icon: UserRound },
+  { href: "/profile", label: "プロフィール", icon: UserRound }
 ];
 const COMMUNITY_NAV_ITEM: NavItem = {
   href: "/community/join",
@@ -71,8 +71,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const mobileNavItems: NavItem[] = navItems;
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname?.startsWith(href);
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname?.startsWith(href));
   const [isChromeHidden, setIsChromeHidden] = useState(false);
   const chromeContextValue = useMemo(
     () => ({

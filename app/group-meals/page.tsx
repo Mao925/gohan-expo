@@ -2,50 +2,53 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { CalendarDays, Clock3, UserRound, Users } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { CalendarDays, Clock3, Trash2, Users } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { useAuth } from '@/context/auth-context';
+import { useMeetGroupMeals, useRealGroupMeals, useJoinGroupMeal, useLeaveGroupMeal, useRespondGroupMeal, useDeleteGroupMeal } from '@/hooks/use-group-meals';
 import {
-  useDeleteGroupMeal,
-  useGroupMeals,
-  useJoinGroupMeal,
-  useLeaveGroupMeal,
-  useRespondGroupMeal
-} from '@/hooks/use-group-meals';
-import { ApiError, GroupMeal, formatBudgetLabel } from '@/lib/api';
+  ApiError,
+  GroupMeal,
+  GroupMealMode,
+  GroupMealParticipantStatus,
+  formatBudgetLabel
+} from '@/lib/api';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
 import { cn } from '@/lib/utils';
 
+const MODE_TABS: { mode: GroupMealMode; label: string; description: string }[] = [
+  { mode: 'REAL', label: 'リアルでGO飯', description: '近場で集まる今日の GO飯 ボックス' },
+  { mode: 'MEET', label: 'MeetでGO飯', description: 'オンラインでつながる今日の GO飯 ボックス' }
+];
+
 const statusMeta: Record<GroupMeal['status'], { label: string; className: string }> = {
-  OPEN: { label: '募集中', className: 'bg-emerald-100 text-emerald-700' },
+  OPEN: { label: '募集中', className: 'bg-emerald-100 text-emerald-600' },
   FULL: { label: '満員', className: 'bg-amber-100 text-amber-700' },
-  CLOSED: { label: '終了', className: 'bg-slate-200 text-slate-600' },
-  CANCELLED: { label: 'キャンセル', className: 'bg-slate-100 text-slate-600' }
+  CLOSED: { label: '終了', className: 'bg-slate-100 text-slate-600' }
 };
 
-const myStatusMeta: Record<NonNullable<GroupMeal['myStatus']>, { label: string; className: string }> = {
-  JOINED: { label: '参加中', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-  INVITED: { label: '招待中', className: 'bg-indigo-50 text-indigo-700 border border-indigo-200' },
-  NONE: { label: '未参加', className: 'bg-slate-50 text-slate-600 border border-slate-200' },
-  LATE: { label: '遅刻予定', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  CANCELLED: { label: 'キャンセル', className: 'bg-slate-50 text-slate-500 border border-slate-200' }
+const modeMeta: Record<GroupMealMode, { label: string; className: string }> = {
+  REAL: { label: 'リアルでGO飯', className: 'bg-emerald-50 text-emerald-700' },
+  MEET: { label: 'MeetでGO飯', className: 'bg-sky-50 text-sky-700' }
 };
 
-function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
-  try {
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) throw new Error('Invalid date');
-    const formatted = parsed.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    return `${formatted} (${getWeekdayLabel(weekday)})`;
-  } catch {
-    return `${date} (${getWeekdayLabel(weekday)})`;
+function getMyStatusLabel(status?: GroupMealParticipantStatus | null): string {
+  if (!status) return '未定';
+  if (status === 'JOINED' || status === 'LATE' || status === 'GO') {
+    return '行く✅';
   }
+  if (status === 'DECLINED' || status === 'CANCELLED' || status === 'NOT_GO') {
+    return '行かない❎';
+  }
+  return '未定';
 }
 
-export default function GroupMealsPage() {
+function GroupMealsPage() {
   return (
     <CommunityGate>
       <GroupMealsContent />
@@ -56,21 +59,43 @@ export default function GroupMealsPage() {
 function GroupMealsContent() {
   const { user } = useAuth();
   const [actionError, setActionError] = useState<string | null>(null);
-  const { data: groupMeals, isPending, error: groupMealsError, refetch } = useGroupMeals();
-
-  const errorMessage = (groupMealsError as ApiError | undefined)?.message ?? null;
+  const searchParams = useSearchParams();
+  const selectedMode = (searchParams.get('mode')?.toUpperCase() as GroupMealMode) ?? 'REAL';
+  const realQuery = useRealGroupMeals();
+  const meetQuery = useMeetGroupMeals();
+  const activeQuery = selectedMode === 'REAL' ? realQuery : meetQuery;
+  const groupMeals = activeQuery.data ?? [];
+  const isPending = activeQuery.isPending;
+  const errorMessage = (activeQuery.error as ApiError | undefined)?.message ?? null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <header className="space-y-4">
+        <div className="flex flex-col gap-1">
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">今日の GO飯</p>
           <h1 className="text-3xl font-semibold text-slate-900">みんなでGO飯</h1>
-          <p className="mt-1 text-sm text-slate-600">ランチ / ディナーの箱を作って、仲間を招待しましょう。</p>
+          <p className="text-sm text-slate-600">
+            {MODE_TABS.find((tab) => tab.mode === selectedMode)?.description}
+          </p>
         </div>
-        <Link href="/group-meals/new">
-          <Button size="sm">新しい箱を作る</Button>
-        </Link>
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {MODE_TABS.map((tab) => (
+            <Button
+              key={tab.mode}
+              asChild
+              variant={tab.mode === selectedMode ? 'primary' : 'ghost'}
+              className="text-sm font-semibold"
+            >
+              <Link href={`/group-meals?mode=${tab.mode}`}>{tab.label}</Link>
+            </Button>
+          ))}
+          {user?.isAdmin ? (
+            <Button size="sm" asChild variant="secondary">
+              <Link href="/group-meals/new">新しい箱を作る</Link>
+            </Button>
+          ) : null}
+        </div>
+      </header>
 
       <ErrorBanner message={actionError || errorMessage} />
 
@@ -78,30 +103,20 @@ function GroupMealsContent() {
         <Card>
           <p className="text-slate-600">読み込み中...</p>
         </Card>
-      ) : errorMessage && !groupMeals ? (
-        <Card className="space-y-3">
-          <p className="text-slate-700">{errorMessage}</p>
-          <Button size="sm" variant="secondary" onClick={() => refetch()}>
-            再読み込み
-          </Button>
-        </Card>
       ) : !groupMeals || groupMeals.length === 0 ? (
-        <Card className="flex flex-col items-start gap-4">
-          <h3 className="text-lg font-semibold text-slate-900">まだ箱がありません</h3>
-          <p className="text-sm text-slate-600">「新しい箱を作る」から最初の募集を作成しましょう。</p>
-          <Link href="/group-meals/new">
-            <Button size="sm">新しい箱を作る</Button>
-          </Link>
+        <Card className="space-y-3 text-sm text-slate-600">
+          <p>このモードではまだ今日の GO飯 がありません。</p>
+          <p>空き日程を増やして、GO飯 グループの生成を待ちましょう。</p>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
           {groupMeals.map((meal) => (
             <GroupMealCard
               key={meal.id}
               meal={meal}
               currentUserId={user?.id}
               currentUserIsAdmin={user?.isAdmin ?? false}
-              onActionError={setActionError}
+              onActionError={(message) => setActionError(message)}
             />
           ))}
         </div>
@@ -110,25 +125,56 @@ function GroupMealsContent() {
   );
 }
 
-function GroupMealCard({
-  meal,
-  currentUserId,
-  currentUserIsAdmin,
-  onActionError
-}: {
+type GroupMealCardProps = {
   meal: GroupMeal;
   currentUserId?: string;
   currentUserIsAdmin?: boolean;
   onActionError?: (message: string | null) => void;
-}) {
+};
+
+function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError }: GroupMealCardProps) {
   const respondMutation = useRespondGroupMeal(meal.id);
   const joinMutation = useJoinGroupMeal(meal.id);
-  const deleteMutation = useDeleteGroupMeal(meal.id);
   const leaveMutation = useLeaveGroupMeal(meal.id);
+  const deleteMutation = useDeleteGroupMeal({ mode: meal.mode });
   const isHost = meal.host.userId === currentUserId;
   const canDelete = isHost || currentUserIsAdmin;
-  const myStatus = meal.myStatus ?? 'NONE';
-  const canLeave = myStatus === 'JOINED' && !isHost;
+  const myParticipant = meal.participants.find((participant) => participant.userId === currentUserId);
+  const fallbackStatus =
+    meal.myStatus && meal.myStatus !== 'NONE' ? (meal.myStatus as GroupMealParticipantStatus) : undefined;
+  const myParticipantStatus = myParticipant?.status ?? fallbackStatus;
+  const isPendingParticipant = myParticipantStatus === 'PENDING';
+  const isGoing =
+    myParticipantStatus === 'JOINED' || myParticipantStatus === 'LATE' || myParticipantStatus === 'GO';
+  const canRespond = !isHost && (isPendingParticipant || myParticipantStatus === 'INVITED');
+  const canLeave = !isHost && isGoing;
+  const canJoinAsGuest = !isHost && !myParticipant && meal.status === 'OPEN' && meal.remainingSlots > 0;
+  const handleDelete = () => {
+    if (!window.confirm('この箱を削除しますか？この操作は元に戻せません。')) {
+      return;
+    }
+    onActionError?.(null);
+    deleteMutation.mutate(meal.id, {
+      onError: (err: any) =>
+        onActionError?.((err as ApiError | undefined)?.message ?? '箱の削除に失敗しました')
+    });
+  };
+
+  const defaultTimeBand = meal.timeSlot === 'DAY' ? 'LUNCH' : 'DINNER';
+  const schedule = meal.schedule ?? {
+    date: meal.date,
+    timeBand: defaultTimeBand,
+    meetingTime: null,
+    meetingTimeMinutes: null,
+    place: null
+  };
+  const formattedDate = formatDateLabel(schedule.date, meal.weekday);
+  const timeBandLabel = schedule.timeBand === 'LUNCH' ? '昼' : '夜';
+  const meetingTimeLabel = schedule.meetingTime;
+  const meetingPlaceName = schedule.place?.name ?? meal.meetingPlace;
+  const meetingPlaceAddress = schedule.place?.address;
+  const budgetLabel = formatBudgetLabel(meal.budget);
+  const talkTopics = meal.talkTopics ?? [];
 
   const handleRespond = (action: 'ACCEPT' | 'DECLINE') => {
     onActionError?.(null);
@@ -144,21 +190,9 @@ function GroupMealCard({
     });
   };
 
-  const handleDelete = () => {
-    onActionError?.(null);
-    if (!window.confirm('この箱を削除しますか？\n参加メンバーの情報も含めて元に戻せません。')) {
-      return;
-    }
-    deleteMutation.mutate(undefined, {
-      onError: (err: any) => {
-        onActionError?.((err as ApiError | undefined)?.message ?? '削除に失敗しました');
-      }
-    });
-  };
-
   const handleLeave = () => {
     onActionError?.(null);
-    if (!window.confirm('この箱から抜けますか？\n参加枠が空き、他のメンバーが参加できるようになります。')) {
+    if (!window.confirm('この箱から抜けますか？')) {
       return;
     }
     leaveMutation.mutate(undefined, {
@@ -166,15 +200,12 @@ function GroupMealCard({
     });
   };
 
-  const joinedParticipants = (meal.participants ?? []).filter(
-    (participant) => participant && (participant.status === 'JOINED' || participant.status === 'LATE')
-  );
-  const budgetLabel = formatBudgetLabel(meal.budget);
+  const participantPreview = meal.participants.slice(0, 3);
 
   return (
-    <Card className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
+    <Card className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span
               className={cn(
@@ -184,89 +215,92 @@ function GroupMealCard({
             >
               {statusMeta[meal.status]?.label ?? meal.status}
             </span>
-            {myStatus !== 'NONE' ? (
-              <span className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold', myStatusMeta[myStatus].className)}>
-                {myStatusMeta[myStatus].label}
-              </span>
-            ) : null}
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900">{meal.title?.trim() || 'タイトルなし'}</h3>
-          <p className="text-sm text-slate-600">
-            <span className="inline-flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-slate-400" />
-              {formatDateLabel(meal.date, meal.weekday)}
+            <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', modeMeta[meal.mode].className)}>
+              {modeMeta[meal.mode].label}
             </span>
-            <span className="ml-3 inline-flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+              {myParticipant ? getMyStatusLabel(myParticipantStatus) : '未定'}
+            </span>
+          </div>
+          <h3 className="text-xl font-semibold text-slate-900">{meal.title || 'タイトルなし'}</h3>
+          <p className="text-sm text-slate-500">
+            <CalendarDays className="inline h-4 w-4 text-slate-400" />
+            <span className="ml-2">{formattedDate}</span>
+            <span className="ml-4 flex items-center gap-1">
               <Clock3 className="h-4 w-4 text-slate-400" />
-              {getTimeSlotLabel(meal.timeSlot)}
+              <span>
+                {timeBandLabel} {meetingTimeLabel ? `/${meetingTimeLabel}` : ''}
+              </span>
             </span>
           </p>
-          {meal.meetingPlace && (
-            <div className="mt-1 flex items-center gap-1 text-xs text-slate-600">
-              <span className="inline-flex h-4 w-4 items-center justify-center text-[10px]">📍</span>
-              <span className="truncate">集合場所：{meal.meetingPlace}</span>
+          {meetingPlaceName ? (
+            <p className="text-sm text-slate-600">
+              <span className="font-semibold text-slate-900">集合場所:</span> {meetingPlaceName}
+            </p>
+          ) : null}
+          {meetingPlaceAddress ? (
+            <p className="text-xs text-slate-500">住所: {meetingPlaceAddress}</p>
+          ) : null}
+          {budgetLabel ? (
+            <p className="text-xs text-slate-500">予算: {budgetLabel}</p>
+          ) : null}
+          {talkTopics.length > 0 ? (
+            <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+              {talkTopics.map((topic) => (
+                <span key={topic} className="rounded-full border border-slate-200 px-2 py-0.5">
+                  {topic}
+                </span>
+              ))}
             </div>
-          )}
-          {budgetLabel && (
-            <div className="mt-1">
-              <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                予算：{budgetLabel}
-              </span>
-            </div>
-          )}
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="secondary">
-            <Link href={`/group-meals/${meal.id}`}>詳細・招待</Link>
+            <Link href={`/group-meals/${meal.id}`}>詳細</Link>
           </Button>
-          {canDelete ? (
+          {currentUserIsAdmin ? (
             <Button
               size="sm"
-              variant="secondary"
-              className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+              variant="ghost"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
+              aria-label="この箱を削除する"
             >
-              {deleteMutation.isPending ? '削除中...' : '削除'}
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {canDelete ? (
+            <Button size="sm" variant="ghost" disabled>
+              管理者
             </Button>
           ) : null}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
-        <div className="flex items-center gap-2 rounded-2xl bg-orange-50 px-3 py-2">
-          <UserRound className="h-4 w-4 text-orange-500" />
-          <span className="font-semibold text-slate-800">{meal.host.name}</span>
-          <span className="text-xs text-slate-500">(ホスト)</span>
-        </div>
-        <div className="flex items-center justify-end gap-3 text-right">
-          <div className="flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-            <Users className="h-4 w-4 text-slate-400" />
-            {meal.joinedCount} / {meal.capacity}
-          </div>
-          <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            残り {meal.remainingSlots} 枠
-          </div>
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">参加者</p>
+        <div className="mt-2 flex flex-wrap gap-3">
+          {participantPreview.map((participant) => (
+            <div
+              key={participant.userId}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm"
+            >
+              <ProfileAvatar imageUrl={participant.profileImageUrl ?? undefined} name={participant.name} size="sm" />
+              <span>{participant.name}</span>
+            </div>
+          ))}
+          {meal.participants.length > participantPreview.length ? (
+            <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+              他 {meal.participants.length - participantPreview.length} 名
+            </span>
+          ) : null}
         </div>
       </div>
 
-      {joinedParticipants.length > 0 ? (
-        <div className="rounded-2xl bg-slate-50 px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">参加メンバー</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {joinedParticipants.map((participant) => (
-              <span key={participant.userId} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                {participant.user?.profile?.name ?? participant.name ?? '参加者'}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="mt-auto flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         {isHost ? (
-          <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">ホストとして参加中</span>
-        ) : myStatus === 'INVITED' ? (
+          <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">ホスト</span>
+        ) : canRespond ? (
           <>
             <Button size="sm" onClick={() => handleRespond('ACCEPT')} disabled={respondMutation.isPending}>
               {respondMutation.isPending ? '参加中...' : '参加する'}
@@ -275,16 +309,14 @@ function GroupMealCard({
               辞退する
             </Button>
           </>
-        ) : myStatus === 'JOINED' ? (
+        ) : canLeave ? (
           <>
             <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">参加中</span>
-            {canLeave ? (
-              <Button size="sm" variant="secondary" onClick={handleLeave} disabled={leaveMutation.isPending}>
-                {leaveMutation.isPending ? '退出中...' : '抜ける'}
-              </Button>
-            ) : null}
+            <Button size="sm" variant="secondary" onClick={handleLeave} disabled={leaveMutation.isPending}>
+              {leaveMutation.isPending ? '退出中...' : '抜ける'}
+            </Button>
           </>
-        ) : meal.remainingSlots > 0 && meal.status === 'OPEN' ? (
+        ) : canJoinAsGuest ? (
           <Button size="sm" onClick={handleJoin} disabled={joinMutation.isPending}>
             {joinMutation.isPending ? '参加中...' : '飛び入り参加'}
           </Button>
@@ -295,3 +327,16 @@ function GroupMealCard({
     </Card>
   );
 }
+
+function formatDateLabel(date: string, weekday: GroupMeal['weekday']) {
+  try {
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) throw new Error('Invalid date');
+    const formatted = parsed.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    return `${formatted} (${getWeekdayLabel(weekday)})`;
+  } catch {
+    return `${date} (${getWeekdayLabel(weekday)})`;
+  }
+}
+
+export default GroupMealsPage;

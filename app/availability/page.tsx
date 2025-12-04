@@ -8,7 +8,14 @@ import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Card } from '@/components/ui/card';
 import { apiFetch, ApiError, fetchAvailabilityStatus, AvailabilityStatusSummary } from '@/lib/api';
-import { createDefaultGrid, gridToSlots, slotsToGrid, TIMESLOTS, WEEKDAYS } from '@/lib/availability';
+import {
+  availabilityStatusToMark,
+  createDefaultGrid,
+  gridToSlots,
+  slotsToGrid,
+  TIMESLOTS,
+  WEEKDAYS
+} from '@/lib/availability';
 import { useAuth } from '@/context/auth-context';
 import { AvailabilityGrid, AvailabilitySlotDto, AvailabilityStatus, MemberRelationship, Profile, TimeSlot, Weekday } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -36,7 +43,10 @@ type AvailabilitySlotButtonProps = {
 };
 
 function AvailabilitySlotButton({ value, onToggle, disabled }: AvailabilitySlotButtonProps) {
+  const mark = availabilityStatusToMark(value);
+  const symbol = mark === 'CIRCLE' ? '◯' : mark === 'TRIANGLE' ? '△' : '×';
   const isAvailable = value === 'AVAILABLE';
+  const isMeetOnly = value === 'MEET_ONLY';
 
   return (
     <button
@@ -47,12 +57,14 @@ function AvailabilitySlotButton({ value, onToggle, disabled }: AvailabilitySlotB
         'flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition',
         isAvailable
           ? 'border-brand bg-brand text-white shadow-sm'
-          : 'border-orange-100 bg-white text-slate-400 hover:border-brand/40 hover:bg-brand/5',
+          : isMeetOnly
+            ? 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm'
+            : 'border-orange-100 bg-white text-slate-400 hover:border-brand/40 hover:bg-brand/5',
         disabled && 'cursor-not-allowed opacity-70'
       )}
-      aria-pressed={isAvailable}
+      aria-pressed={value !== 'UNAVAILABLE'}
     >
-      {isAvailable ? '◯' : '×'}
+      {symbol}
     </button>
   );
 }
@@ -114,7 +126,7 @@ function AvailabilityContent() {
     setStatusLoading(true);
     setStatusError(null);
     try {
-      const data = await fetchAvailabilityStatus();
+      const data = await fetchAvailabilityStatus(token);
       if (isMountedRef.current) {
         setAvailabilityStatus(data);
       }
@@ -129,7 +141,7 @@ function AvailabilityContent() {
         setStatusLoading(false);
       }
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (data) {
@@ -206,9 +218,15 @@ function AvailabilityContent() {
     return days;
   }, [today]);
 
+  const cycleStatus = (status: AvailabilityStatus): AvailabilityStatus => {
+    if (status === 'UNAVAILABLE') return 'AVAILABLE';
+    if (status === 'AVAILABLE') return 'MEET_ONLY';
+    return 'UNAVAILABLE';
+  };
+
   const handleToggle = (weekday: Weekday, timeSlot: TimeSlot) => {
     const current = grid[weekday]?.[timeSlot] ?? 'UNAVAILABLE';
-    const nextStatus: AvailabilityStatus = current === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
+    const nextStatus = cycleStatus(current);
 
     const nextGrid: AvailabilityGrid = {
       ...grid,
@@ -263,6 +281,20 @@ function AvailabilityContent() {
             ) : successMessage ? (
               <p className="text-sm font-semibold text-emerald-600">{successMessage}</p>
             ) : null}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span className="flex items-center gap-1">
+              <span className="text-lg">◯</span>
+              リアル・Meet の両方 OK
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-lg">△</span>
+              Meet のみ OK
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-lg">×</span>
+              どちらも NG
+            </span>
+          </div>
           </div>
 
           <div className="overflow-x-auto">

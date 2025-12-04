@@ -1,64 +1,71 @@
 'use client';
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/auth-context';
 import {
-  fetchGroupMeals,
-  createGroupMeal,
-  fetchGroupMealCandidates,
-  inviteGroupMealCandidates,
-  respondGroupMeal,
-  joinGroupMeal,
-  deleteGroupMeal,
-  leaveGroupMeal,
-  updateMyGroupMealStatus,
-  getGroupMealInvitations,
-  cancelGroupMealInvitation,
+  ApiError,
   CreateGroupMealInput,
-  GroupMealCandidatesResponse,
-  GroupMealParticipantStatus,
   GroupMeal,
-  GroupMealInvitationSummary
+  GroupMealCandidatesResponse,
+  GroupMealInvitationSummary,
+  GroupMealMode,
+  cancelGroupMealInvitation,
+  createGroupMeal,
+  deleteGroupMeal,
+  fetchGroupMealCandidates,
+  fetchGroupMealDetail,
+  fetchGroupMeals,
+  getGroupMealInvitations,
+  inviteGroupMealCandidates,
+  joinGroupMeal,
+  leaveGroupMeal,
+  respondGroupMeal
 } from '@/lib/api';
 
-export function useGroupMeals() {
-  const { token } = useAuth();
+const GROUP_MEALS_QUERY_KEY = ['group-meals'] as const;
 
-  return useQuery<GroupMeal[]>({
-    queryKey: ['groupMeals', token],
-    queryFn: () => {
-      if (!token) throw new Error('ログインしてください');
-      return fetchGroupMeals(token);
-    },
+export function useGroupMeals(mode: GroupMealMode) {
+  const { token } = useAuth();
+  return useQuery<GroupMeal[], ApiError>({
+    queryKey: [...GROUP_MEALS_QUERY_KEY, mode, token],
+    queryFn: () => fetchGroupMeals(token, { mode }),
     enabled: Boolean(token)
   });
 }
 
-export function useCreateGroupMeal() {
-  const { token } = useAuth();
-  const queryClient = useQueryClient();
+export function useRealGroupMeals() {
+  return useGroupMeals('REAL');
+}
 
-  return useMutation({
-    mutationFn: (input: CreateGroupMealInput) => {
-      if (!token) throw new Error('ログインしてください');
-      return createGroupMeal(input, token);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
-    }
+export function useMeetGroupMeals() {
+  return useGroupMeals('MEET');
+}
+
+export function useGroupMealDetail(groupMealId: string) {
+  const { token } = useAuth();
+  return useQuery<GroupMeal, ApiError>({
+    queryKey: ['group-meal', groupMealId, token],
+    queryFn: () => fetchGroupMealDetail(groupMealId, token),
+    enabled: Boolean(token) && Boolean(groupMealId)
+  });
+}
+
+export function useGroupMealInvitations(groupMealId: string, options?: { enabled?: boolean }) {
+  const { token } = useAuth();
+
+  return useQuery<GroupMealInvitationSummary[], ApiError>({
+    queryKey: ['group-meals', groupMealId, 'invitations', token],
+    queryFn: () => getGroupMealInvitations(groupMealId, token),
+    enabled: Boolean(token) && Boolean(groupMealId) && (options?.enabled ?? true)
   });
 }
 
 export function useGroupMealCandidates(groupMealId: string, options?: { enabled?: boolean }) {
   const { token } = useAuth();
 
-  return useQuery<GroupMealCandidatesResponse>({
-    queryKey: ['groupMealCandidates', groupMealId, token],
-    queryFn: () => {
-      if (!token) throw new Error('ログインしてください');
-      return fetchGroupMealCandidates(groupMealId, token);
-    },
-    enabled: Boolean(groupMealId && token && options?.enabled !== false)
+  return useQuery<GroupMealCandidatesResponse, ApiError>({
+    queryKey: ['group-meals', groupMealId, 'candidates', token],
+    queryFn: () => fetchGroupMealCandidates(groupMealId, token),
+    enabled: Boolean(token) && Boolean(groupMealId) && (options?.enabled ?? true)
   });
 }
 
@@ -66,14 +73,12 @@ export function useInviteGroupMealCandidates(groupMealId: string) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (userIds: string[]) => {
-      if (!token) throw new Error('ログインしてください');
-      return inviteGroupMealCandidates(groupMealId, userIds, token);
-    },
+  return useMutation<GroupMeal, ApiError, string[]>({
+    mutationFn: (userIds) => inviteGroupMealCandidates(groupMealId, userIds, token),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
-      queryClient.invalidateQueries({ queryKey: ['groupMealCandidates', groupMealId, token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals', groupMealId, 'candidates', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals', groupMealId, 'invitations', token] });
     }
   });
 }
@@ -82,13 +87,11 @@ export function useRespondGroupMeal(groupMealId: string) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (action: 'ACCEPT' | 'DECLINE') => {
-      if (!token) throw new Error('ログインしてください');
-      return respondGroupMeal(groupMealId, action, token);
-    },
+  return useMutation<void, ApiError, 'ACCEPT' | 'DECLINE'>({
+    mutationFn: (action) => respondGroupMeal(groupMealId, action, token),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meal', groupMealId, token] });
     }
   });
 }
@@ -97,13 +100,11 @@ export function useJoinGroupMeal(groupMealId: string) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: () => {
-      if (!token) throw new Error('ログインしてください');
-      return joinGroupMeal(groupMealId, token);
-    },
+  return useMutation<void, ApiError, void>({
+    mutationFn: () => joinGroupMeal(groupMealId, token),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meal', groupMealId, token] });
     }
   });
 }
@@ -112,57 +113,50 @@ export function useLeaveGroupMeal(groupMealId: string) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: () => {
-      if (!token) throw new Error('ログインしてください');
-      return leaveGroupMeal(groupMealId, token);
-    },
+  return useMutation<void, ApiError, void>({
+    mutationFn: () => leaveGroupMeal(groupMealId, token),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals', token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meal', groupMealId, token] });
     }
   });
 }
 
-export function useDeleteGroupMeal(groupMealId: string) {
-  const { token } = useAuth();
+export function useDeleteGroupMeal(options?: { mode?: GroupMealMode }) {
+  const { token, user } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: () => {
-      if (!token) throw new Error('ログインしてください');
+  return useMutation<void, ApiError, string>({
+    mutationFn: (groupMealId) => {
+      if (!user?.isAdmin) {
+        throw new ApiError('Only admin can delete group meals', 403);
+      }
       return deleteGroupMeal(groupMealId, token);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+      queryClient.invalidateQueries({
+        queryKey: [...GROUP_MEALS_QUERY_KEY, token]
+      });
+      if (options?.mode) {
+        queryClient.invalidateQueries({
+          queryKey: [...GROUP_MEALS_QUERY_KEY, options.mode, token]
+        });
+      }
     }
   });
 }
 
-export function useUpdateMyGroupMealStatus(groupMealId: string) {
+export function useCreateGroupMeal() {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (status: Extract<GroupMealParticipantStatus, 'JOINED' | 'LATE' | 'CANCELLED'>) => {
-      if (!token) throw new Error('ログインしてください');
-      return updateMyGroupMealStatus(groupMealId, status);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMeals', token] });
+  return useMutation<GroupMeal, ApiError, CreateGroupMealInput>({
+    mutationFn: (input) => createGroupMeal({ ...input, mode: input.mode ?? 'REAL' }, token),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({
+        queryKey: [...GROUP_MEALS_QUERY_KEY, created.mode, token]
+      });
     }
-  });
-}
-
-export function useGroupMealInvitations(groupMealId: string, options?: { enabled?: boolean }) {
-  const { token } = useAuth();
-
-  return useQuery<GroupMealInvitationSummary[]>({
-    queryKey: ['groupMealInvitations', groupMealId, token],
-    queryFn: () => {
-      if (!token) throw new Error('ログインしてください');
-      return getGroupMealInvitations(groupMealId, token);
-    },
-    enabled: Boolean(groupMealId && token && options?.enabled !== false)
   });
 }
 
@@ -170,13 +164,10 @@ export function useCancelGroupMealInvitation(groupMealId: string) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (invitationId: string) => {
-      if (!token) throw new Error('ログインしてください');
-      return cancelGroupMealInvitation(invitationId, token);
-    },
+  return useMutation<void, ApiError, string>({
+    mutationFn: (invitationId) => cancelGroupMealInvitation(invitationId, token),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groupMealInvitations', groupMealId, token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals', groupMealId, 'invitations', token] });
     }
   });
 }
