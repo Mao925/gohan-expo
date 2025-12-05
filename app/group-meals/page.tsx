@@ -37,6 +37,30 @@ const modeMeta: Record<GroupMealMode, { label: string; className: string }> = {
   MEET: { label: 'MeetでGO飯', className: 'bg-sky-50 text-sky-700' }
 };
 
+/**
+ * GroupMeal の開催日/時間を numeric timestamp で返す。
+ * 日付・時間情報がない場合は 0 を返す（最も古い扱い）。
+ */
+function getGroupMealTimestamp(meal: GroupMeal): number {
+  const date = meal.schedule?.date;
+  if (!date) {
+    return 0;
+  }
+
+  if (meal.schedule?.meetingTimeMinutes != null) {
+    const base = new Date(`${date}T00:00:00`).getTime();
+    return base + meal.schedule.meetingTimeMinutes * 60 * 1000;
+  }
+
+  const timeString = meal.gatherTime ?? meal.schedule?.meetingTime ?? '00:00';
+  const dateTime = new Date(`${date}T${timeString}`);
+  if (Number.isNaN(dateTime.getTime())) {
+    return new Date(`${date}T00:00:00`).getTime();
+  }
+
+  return dateTime.getTime();
+}
+
 function getMyStatusLabel(status?: GroupMealParticipantStatus | null): string {
   if (!status) return '未定';
   if (status === 'JOINED' || status === 'LATE' || status === 'GO') {
@@ -67,6 +91,9 @@ function GroupMealsContent() {
   const groupMeals = activeQuery.data ?? [];
   const isPending = activeQuery.isPending;
   const errorMessage = (activeQuery.error as ApiError | undefined)?.message ?? null;
+  const sortedMeals = groupMeals
+    .slice()
+    .sort((a, b) => getGroupMealTimestamp(a) - getGroupMealTimestamp(b));
 
   return (
     <div className="space-y-6">
@@ -103,14 +130,14 @@ function GroupMealsContent() {
         <Card>
           <p className="text-slate-600">読み込み中...</p>
         </Card>
-      ) : !groupMeals || groupMeals.length === 0 ? (
+      ) : sortedMeals.length === 0 ? (
         <Card className="space-y-3 text-sm text-slate-600">
           <p>このモードではまだ今日の GO飯 がありません。</p>
           <p>空き日程を増やして、GO飯 グループの生成を待ちましょう。</p>
         </Card>
       ) : (
         <div className="space-y-4">
-          {groupMeals.map((meal) => (
+          {sortedMeals.map((meal) => (
             <GroupMealCard
               key={meal.id}
               meal={meal}
