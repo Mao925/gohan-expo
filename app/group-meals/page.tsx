@@ -52,7 +52,7 @@ function getGroupMealTimestamp(meal: GroupMeal): number {
     return base + meal.schedule.meetingTimeMinutes * 60 * 1000;
   }
 
-  const timeString = meal.gatherTime ?? meal.schedule?.meetingTime ?? '00:00';
+  const timeString = meal.schedule?.meetingTime ?? '00:00';
   const dateTime = new Date(`${date}T${timeString}`);
   if (Number.isNaN(dateTime.getTime())) {
     return new Date(`${date}T00:00:00`).getTime();
