@@ -127,7 +127,7 @@ function MembersContent() {
             <div className="flex items-center gap-3">
               <Heart className="h-7 w-7 text-red-500" />
               <h1 className="text-2xl font-semibold text-slate-900">
-                自分がご飯に誘われて良い人へいいねを送ろう！
+              四人飯にいきたい人を選んぼう！
               </h1>
             </div>
           </div>
