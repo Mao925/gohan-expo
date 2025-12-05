@@ -182,10 +182,10 @@ export type PublicUserProfile = {
   hobbies: string[];
   mainArea: string | null;
   subAreas: string[];
-  defaultBudget: number | null;
-  drinkingStyle: string | null;
+  defaultBudget: GroupMealBudget | null;
+  drinkingStyle: DrinkingStyle | null;
   mealStyle: string | null;
-  goMealFrequency: string | null;
+  goMealFrequency: GoMealFrequency | null;
   bio: string;
   completionRate: number;
 };
