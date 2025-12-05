@@ -50,7 +50,10 @@ function MembersContent() {
       ? "ログインし直してください"
       : apiErrorMessage;
   const errorMessage = actionError ?? friendlyApiError;
-  const handleToggleLike = async (memberId: string, currentStatus: LikeStatus) => {
+  const handleToggleLike = async (
+    memberId: string,
+    currentStatus: LikeStatus
+  ) => {
     if (updatingState?.memberId === memberId) return;
     const targetMember = members.find((item) => item.id === memberId);
     if (!targetMember) return;
@@ -77,7 +80,9 @@ function MembersContent() {
       await updateLikeStatus(memberId, nextAnswer);
     } catch (err: any) {
       console.error("Failed to update like status", err);
-      setActionError("いいねの送信に失敗しました。通信環境を確認して再度お試しください。");
+      setActionError(
+        "いいねの送信に失敗しました。通信環境を確認して再度お試しください。"
+      );
       setMembers((prev) =>
         prev.map((item) =>
           item.id === memberId
@@ -127,7 +132,7 @@ function MembersContent() {
             <div className="flex items-center gap-3">
               <Heart className="h-7 w-7 text-red-500" />
               <h1 className="text-2xl font-semibold text-slate-900">
-                自分がご飯に誘われて良い人へいいねを送ろう！
+                4人でご飯に行きたい人を選ぼう！
               </h1>
             </div>
           </div>

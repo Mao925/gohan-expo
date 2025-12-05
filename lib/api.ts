@@ -540,6 +540,33 @@ export async function updateLikeStatus(
   });
 }
 
+export type CommunityInvite = {
+  id: string;
+  token: string;
+  inviteUrl: string;
+};
+
+export type RedeemCommunityInviteResponse = {
+  membershipId: string;
+  status: 'approved' | 'pending' | 'rejected' | string;
+  message: string;
+};
+
+export async function createCommunityInvite(): Promise<CommunityInvite> {
+  return apiFetch<CommunityInvite>('/api/community/invites', {
+    method: 'POST'
+  });
+}
+
+export async function redeemCommunityInvite(
+  token: string
+): Promise<RedeemCommunityInviteResponse> {
+  return apiFetch<RedeemCommunityInviteResponse>('/api/community/invites/redeem', {
+    method: 'POST',
+    data: { token }
+  });
+}
+
 export async function deleteMember(userId: string, token?: string | null): Promise<void> {
   await apiFetch<void>(`/api/admin/members/${userId}`, {
     method: 'DELETE',
