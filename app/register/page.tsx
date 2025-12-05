@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -26,6 +26,8 @@ type FormValues = z.infer<typeof schema>;
 export default function RegisterPage() {
   const { register: registerUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('inviteToken');
   const [error, setError] = useState<string | null>(null);
   const {
     register,
@@ -36,11 +38,19 @@ export default function RegisterPage() {
     defaultValues: { name: '', email: '', password: '' }
   });
 
+  const handleRegisterSuccess = () => {
+    const nextPath = inviteToken
+      ? `/onboarding?inviteToken=${encodeURIComponent(inviteToken)}`
+      : '/onboarding';
+
+    router.push(nextPath);
+  };
+
   const onSubmit = async (values: FormValues) => {
     setError(null);
     try {
       await registerUser(values);
-      router.push('/onboarding');
+      handleRegisterSuccess();
     } catch (err: any) {
       const apiError = err as ApiError | undefined;
       if (apiError?.isServerError) {

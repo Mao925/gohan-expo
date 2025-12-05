@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ComponentType, type ReactNode } from "react";
 import {
   CalendarHeart,
@@ -89,6 +89,8 @@ const slides: Slide[] = [
 export default function OnboardingPage() {
   const { token } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("inviteToken");
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const currentSlide = slides[currentIndex];
@@ -100,7 +102,11 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     if (isLast) {
-      router.push("/community/join");
+      const nextPath = inviteToken
+        ? `/community/join?inviteToken=${encodeURIComponent(inviteToken)}`
+        : "/community/join";
+
+      router.push(nextPath);
       return;
     }
     setCurrentIndex((prev) => Math.min(prev + 1, slides.length - 1));
@@ -122,7 +128,15 @@ export default function OnboardingPage() {
               className="md:min-w-[140px]"
               aria-label="新規登録ページへ"
             >
-              <Link href="/register">新規登録へ</Link>
+              <Link
+                href={
+                  inviteToken
+                    ? `/register?inviteToken=${encodeURIComponent(inviteToken)}`
+                    : "/register"
+                }
+              >
+                新規登録へ
+              </Link>
             </Button>
             <Button
               asChild
@@ -130,7 +144,15 @@ export default function OnboardingPage() {
               className="md:min-w-[140px]"
               aria-label="ログインページへ"
             >
-              <Link href="/login">ログインへ</Link>
+              <Link
+                href={
+                  inviteToken
+                    ? `/login?inviteToken=${encodeURIComponent(inviteToken)}`
+                    : "/login"
+                }
+              >
+                ログインへ
+              </Link>
             </Button>
           </div>
         </Card>
