@@ -8,7 +8,12 @@ import { Button } from '@/components/ui/button';
 import { CommunityGate } from '@/components/community/community-gate';
 import { FavoriteMealsList } from '@/components/favorite-meals-list';
 import { ProfileAvatar } from '@/components/profile-avatar';
-import { PublicUserProfile, fetchPublicUserProfile } from '@/lib/api';
+import { PublicUserProfile, fetchPublicUserProfile, formatBudgetLabel } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import {
+  DRINKING_STYLE_LABELS,
+  GO_MEAL_FREQUENCY_LABELS
+} from '@/lib/profile-labels';
 
 type LoadState =
   | 'idle'
@@ -70,6 +75,16 @@ function MemberProfileContent() {
   const handleBack = () => {
     router.back();
   };
+
+  const areas = profile?.areas ?? [];
+  const hasAreas = areas.length > 0;
+  const budgetLabel = formatBudgetLabel(profile?.defaultBudget ?? null);
+  const drinkingStyleLabel = profile?.drinkingStyle
+    ? DRINKING_STYLE_LABELS[profile.drinkingStyle]
+    : null;
+  const goMealFrequencyLabel = profile?.goMealFrequency
+    ? GO_MEAL_FREQUENCY_LABELS[profile.goMealFrequency]
+    : null;
 
   return (
     <div className="min-h-screen">
@@ -137,9 +152,14 @@ function MemberProfileContent() {
                   <p className="text-xs text-slate-500">
                     プロフィール完成度 {profile.completionRate}%
                   </p>
-                  {profile.bio ? (
-                    <p className="text-sm text-slate-700">{profile.bio}</p>
-                  ) : null}
+                  <p
+                    className={cn(
+                      'text-sm',
+                      profile.bio ? 'text-slate-700' : 'text-xs text-slate-500'
+                    )}
+                  >
+                    {profile.bio ?? '未設定'}
+                  </p>
                 </div>
               </div>
             </Card>
@@ -150,67 +170,92 @@ function MemberProfileContent() {
                 <span className="text-xs text-slate-500">公開中の項目です</span>
               </div>
               <div className="grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold text-slate-500">よくいるエリア</p>
-                  <p className="mt-1 text-slate-700">{profile.mainArea ?? '未設定'}</p>
-                  {profile.subAreas.length > 0 && (
-                    <p className="mt-1 text-xs text-slate-500">
-                      サブエリア: {profile.subAreas.join(' / ')}
-                    </p>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-500">よく行く場所</p>
+                  {hasAreas ? (
+                    <div className="flex flex-wrap gap-2">
+                      {areas.map((area, index) => (
+                        <span
+                          key={`${area}-${index}`}
+                          className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700"
+                        >
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">未設定</p>
                   )}
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500">飲み方</p>
                   <p className="mt-1 text-slate-700">
-                    {profile.drinkingStyle ?? '未設定'}
+                    {drinkingStyleLabel ?? '未設定'}
                   </p>
                   <p className="mt-3 text-xs font-semibold text-slate-500">GO飯頻度</p>
                   <p className="mt-1 text-slate-700">
-                    {profile.goMealFrequency ?? '未設定'}
+                    {goMealFrequencyLabel ?? '未設定'}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold text-slate-500">予算の目安</p>
+                  <p className="mt-1 text-slate-700">
+                    {budgetLabel ?? '未設定'}
                   </p>
                 </div>
               </div>
             </Card>
 
-            {(profile.favoriteMeals.length > 0 || profile.ngFoods.length > 0) && (
-              <Card className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-900">ご飯の好み</h2>
-                  <span className="text-xs text-slate-500">好きな/苦手な料理</span>
-                </div>
-                {profile.favoriteMeals.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-500">好きなご飯</p>
-                    <FavoriteMealsList meals={profile.favoriteMeals} variant="pill" />
-                  </div>
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-900">ご飯の好み</h2>
+                <span className="text-xs text-slate-500">好きな/苦手な料理</span>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500">好きなご飯</p>
+                {profile.favoriteMeals.length > 0 ? (
+                  <FavoriteMealsList meals={profile.favoriteMeals} variant="pill" />
+                ) : (
+                  <p className="text-xs text-slate-500">未設定</p>
                 )}
-                {profile.ngFoods.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-500">NGなご飯</p>
-                    <div className="flex flex-wrap gap-2">
-                      {profile.ngFoods.map((item) => (
-                        <span
-                          key={item}
-                          className="rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500">NGなご飯</p>
+                {profile.ngFoods.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {profile.ngFoods.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700"
+                      >
+                        {item}
+                      </span>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-xs text-slate-500">未設定</p>
                 )}
-              </Card>
-            )}
+              </div>
+            </Card>
 
-            {profile.hobbies.length > 0 && (
-              <Card className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-900">趣味・関心</h2>
-                  <span className="text-xs text-slate-500">どんな話題が好きか</span>
+            <Card className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-900">趣味・関心</h2>
+                <span className="text-xs text-slate-500">どんな話題が好きか</span>
+              </div>
+              {profile.hobbies.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {profile.hobbies.map((hobby) => (
+                    <span
+                      key={hobby}
+                      className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700"
+                    >
+                      {hobby}
+                    </span>
+                  ))}
                 </div>
-                <p className="text-sm text-slate-700">{profile.hobbies.join(' / ')}</p>
-              </Card>
-            )}
+              ) : (
+                <p className="text-xs text-slate-500">未設定</p>
+              )}
+            </Card>
           </div>
         )}
       </div>
