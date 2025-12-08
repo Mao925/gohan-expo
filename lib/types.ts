@@ -3,6 +3,7 @@ export type User = {
   name: string;
   email: string;
   isAdmin?: boolean;
+  hasCompletedOnboarding?: boolean;
 };
 
 export type Profile = import('@/lib/api').Profile;

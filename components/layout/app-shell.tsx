@@ -2,7 +2,7 @@
 
 import { ComponentType, ReactNode, createContext, useContext, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   HeartHandshake,
@@ -53,6 +53,7 @@ export function useShellChrome() {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout, isLoading } = useAuth();
   const { data: communityStatus } = useCommunitySelfStatus(Boolean(user));
 
@@ -80,6 +81,11 @@ export function AppShell({ children }: AppShellProps) {
     []
   );
 
+  const handleOpenUseCase = () => {
+    const from = pathname || "/";
+    void router.push(`/use-case?from=${encodeURIComponent(from)}`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg-soft)] text-[var(--text-muted)]">
@@ -106,7 +112,7 @@ export function AppShell({ children }: AppShellProps) {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 text-sm md:flex">
+        <nav className="hidden items-center gap-1 text-sm md:flex">
             {navItems.map(({ href, label }) => (
               <Link
                 key={href}
@@ -136,6 +142,16 @@ export function AppShell({ children }: AppShellProps) {
                   <Link href="/admin/login">管理者</Link>
                 </Button>
               </div>
+            )}
+            {!isLoading && user?.hasCompletedOnboarding && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+                onClick={handleOpenUseCase}
+              >
+                使用方法
+              </Button>
             )}
           </div>
         </div>
