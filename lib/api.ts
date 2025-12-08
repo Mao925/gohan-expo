@@ -267,6 +267,16 @@ export type CreateGroupMealPayload = {
   meetUrl?: string;
 };
 
+export type GroupMealMetadataUpdatePayload = {
+  title?: string | null;
+  date?: string;
+  timeSlot?: TimeSlot;
+  gatherTime?: string | null;
+  capacity?: number;
+  nearestStation?: string | null;
+  budget?: GroupMealBudget | null;
+};
+
 export async function fetchGroupMeals(
   token?: string | null,
   params?: { mode?: GroupMealMode }
@@ -302,6 +312,34 @@ export async function createGroupMeal(token: string, payload: CreateGroupMealPay
   }
 
   return (await res.json()) as GroupMeal;
+}
+
+export async function updateGroupMealMetadata(
+  groupMealId: string,
+  payload: GroupMealMetadataUpdatePayload,
+  token?: string | null
+): Promise<GroupMeal> {
+  const body: Record<string, unknown> = {};
+  const fields: Array<keyof GroupMealMetadataUpdatePayload> = [
+    'title',
+    'date',
+    'timeSlot',
+    'gatherTime',
+    'capacity',
+    'nearestStation',
+    'budget'
+  ];
+  fields.forEach((field) => {
+    if (payload[field] !== undefined) {
+      body[field] = payload[field] as unknown;
+    }
+  });
+
+  return apiFetch(`/api/group-meals/${groupMealId}`, {
+    method: 'PATCH',
+    data: body,
+    token
+  });
 }
 
 export async function getGroupMealInvitations(

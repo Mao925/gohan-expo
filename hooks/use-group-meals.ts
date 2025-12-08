@@ -7,6 +7,7 @@ import {
   GroupMeal,
   GroupMealCandidatesResponse,
   GroupMealInvitationSummary,
+  GroupMealMetadataUpdatePayload,
   GroupMealMode,
   cancelGroupMealInvitation,
   createGroupMeal,
@@ -18,7 +19,8 @@ import {
   inviteGroupMealCandidates,
   joinGroupMeal,
   leaveGroupMeal,
-  respondGroupMeal
+  respondGroupMeal,
+  updateGroupMealMetadata
 } from '@/lib/api';
 
 const GROUP_MEALS_QUERY_KEY = ['group-meals'] as const;
@@ -142,6 +144,19 @@ export function useDeleteGroupMeal(options?: { mode?: GroupMealMode }) {
           queryKey: [...GROUP_MEALS_QUERY_KEY, options.mode, token]
         });
       }
+    }
+    });
+}
+
+export function useUpdateGroupMealMetadata(groupMealId: string) {
+  const { token } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<GroupMeal, ApiError, GroupMealMetadataUpdatePayload>({
+    mutationFn: (payload) => updateGroupMealMetadata(groupMealId, payload, token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-meal', groupMealId, token] });
+      queryClient.invalidateQueries({ queryKey: ['group-meals'] });
     }
   });
 }
