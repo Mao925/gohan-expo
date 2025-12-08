@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, Clock3, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -63,10 +63,27 @@ export default function GroupMealDetailPage({
 function GroupMealDetailContent({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
   const [actionError, setActionError] = useState<string | null>(null);
   const { data: groupMeal, isPending, error } = useGroupMealDetail(params.id);
+  const schedule = useMemo(() => {
+    if (!groupMeal) return null;
+    const defaultTimeBand = groupMeal.timeSlot === "DAY" ? "LUNCH" : "DINNER";
+    return (
+      groupMeal.schedule ?? {
+        date: groupMeal.date,
+        timeBand: defaultTimeBand,
+        meetingTime: null,
+        meetingTimeMinutes: null,
+        place: null,
+      }
+    );
+  }, [groupMeal]);
   const invitationId = searchParams.get("invitationId") ?? undefined;
+  const currentLocation =
+    `${pathname ?? ""}${searchParams.toString() ? `?${searchParams.toString()}` : ""}` ||
+    `/group-meals/${params.id}`;
 
   const respondMutation = useRespondGroupMeal(params.id);
   const joinMutation = useJoinGroupMeal(params.id);
@@ -181,6 +198,12 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
     });
   };
 
+  const handleGoToEditPage = () => {
+    if (!groupMeal) return;
+    const targetFrom = encodeURIComponent(currentLocation ?? `/group-meals/${groupMeal.id}`);
+    router.push(`/group-meals/${groupMeal.id}/edit?from=${targetFrom}`);
+  };
+
   const handleToggle = (userId: string) => {
     setActionError(null);
     setSelectedUserIds((prev) =>
@@ -241,20 +264,17 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
     );
   }
 
-  const defaultTimeBand = groupMeal.timeSlot === "DAY" ? "LUNCH" : "DINNER";
-  const schedule = groupMeal.schedule ?? {
-    date: groupMeal.date,
-    timeBand: defaultTimeBand,
-    meetingTime: null,
-    meetingTimeMinutes: null,
-    place: null,
-  };
-  const formattedDate = formatDateLabel(schedule.date, groupMeal.weekday);
-  const timeBandLabel = schedule.timeBand === "LUNCH" ? "昼" : "夜";
-  const meetingTimeLabel = schedule.meetingTime ?? null;
-  const meetingPlaceName = schedule.place?.name ?? groupMeal.meetingPlace;
-  const meetingPlaceAddress = schedule.place?.address;
+  const resolvedSchedule = schedule!;
+  const formattedDate = formatDateLabel(resolvedSchedule.date, groupMeal.weekday);
+  const timeBandLabel = resolvedSchedule.timeBand === "LUNCH" ? "昼" : "夜";
+  const meetingTimeLabel = resolvedSchedule.meetingTime ?? null;
+  const meetingPlaceName = resolvedSchedule.place?.name ?? groupMeal.meetingPlace;
+  const meetingPlaceAddress = resolvedSchedule.place?.address;
   const budgetLabel = formatBudgetLabel(groupMeal.budget);
+
+  const canEditMetadata = Boolean(
+    groupMeal && user && (user.isAdmin || user.id === groupMeal.host.userId)
+  );
 
   const candidates = candidatesData?.candidates ?? [];
   const availableCandidates = candidates.filter(
@@ -284,10 +304,19 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
             {MODE_DESCRIPTIONS[groupMeal.mode]}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/group-meals?mode=REAL">一覧に戻る</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/group-meals?mode=REAL">一覧に戻る</Link>
+            </Button>
+            {canEditMetadata ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleGoToEditPage}
+              >
+                箱の情報を編集
+              </Button>
+            ) : null}
           {user?.isAdmin ? (
             <Button
               variant="ghost"
@@ -609,6 +638,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
           </Card>
         </>
       ) : null}
+
     </div>
   );
 }
