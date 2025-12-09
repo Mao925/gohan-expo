@@ -132,7 +132,7 @@ function MembersContent() {
             <div className="flex items-center gap-3">
               <Heart className="h-7 w-7 text-red-500" />
               <h1 className="text-2xl font-semibold text-slate-900">
-                4人でご飯に行きたい人を選ぼう！
+                を押した人とのご飯会に誘われることが多くなるよ！
               </h1>
             </div>
           </div>
