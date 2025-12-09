@@ -114,12 +114,18 @@ export default function LoginPage() {
         >
           LINEでログイン
         </Button>
-        <p className="text-center text-sm text-slate-600">
-          アカウントをお持ちでない方は{' '}
-          <Link href="/register" className="text-brand">
-            新規登録はこちら
-          </Link>
-        </p>
+        <div className="mt-6 space-y-2">
+          <p className="text-center text-sm text-slate-600">
+            まだアカウントをお持ちでない方
+          </p>
+          <Button
+            variant="outline"
+            className="w-full border-[var(--brand)] text-[var(--brand)] bg-white hover:bg-[var(--brand)]/10"
+            asChild
+          >
+            <Link href="/register">新規登録はこちら</Link>
+          </Button>
+        </div>
       </form>
     </Card>
   );
