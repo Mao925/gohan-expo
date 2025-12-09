@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -48,45 +48,27 @@ function formatTime(value: string) {
 }
 
 export function InvitationList({ invitations, groupMealId }: InvitationListProps) {
-  const [items, setItems] = useState<GroupMealInvitationSummary[]>(invitations);
-  const [processingId, setProcessingId] = useState<string | null>(null);
   const cancelMutation = useCancelGroupMealInvitation(groupMealId);
 
-  useEffect(() => {
-    setItems(invitations);
+  const visibleInvitations = useMemo(() => {
+    return invitations.filter((invitation) => {
+      const isMarkedCanceled =
+        invitation.isCanceled ||
+        invitation.status === 'CANCELLED' ||
+        invitation.participantStatus === 'CANCELLED';
+
+      return !isMarkedCanceled;
+    });
   }, [invitations]);
 
   const sortedInvitations = useMemo(() => {
-    return [...items].sort((a, b) => {
-      if (a.isCanceled === b.isCanceled) {
-        return new Date(b.invitedAt).getTime() - new Date(a.invitedAt).getTime();
-      }
-      return a.isCanceled ? 1 : -1;
-    });
-  }, [items]);
+    return [...visibleInvitations].sort(
+      (a, b) => new Date(b.invitedAt).getTime() - new Date(a.invitedAt).getTime()
+    );
+  }, [visibleInvitations]);
 
   const handleCancel = (invitationId: string) => {
-    if (processingId) return;
-    setProcessingId(invitationId);
-    cancelMutation.mutate(invitationId, {
-      onSuccess: () => {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.id === invitationId
-              ? {
-                  ...item,
-                  isCanceled: true,
-                  canceledAt: new Date().toISOString()
-                }
-              : item
-          )
-        );
-        setProcessingId(null);
-      },
-      onError: () => {
-        setProcessingId(null);
-      }
-    });
+    cancelMutation.mutate(invitationId);
   };
 
   if (sortedInvitations.length === 0) {
@@ -144,26 +126,28 @@ export function InvitationList({ invitations, groupMealId }: InvitationListProps
                 ) : null}
               </div>
             </div>
-            {!invitation.isCanceled ? (
-              <div className="mt-3 flex justify-end">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="border border-slate-200 text-slate-700 hover:border-slate-300"
-                  onClick={() => handleCancel(invitation.id)}
-                  disabled={processingId === invitation.id}
-                >
-                  {processingId === invitation.id ? (
-                    <>
-                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      キャンセル中...
-                    </>
-                  ) : (
-                    '招待キャンセル'
-                  )}
-                </Button>
-              </div>
-            ) : null}
+            <div className="mt-3 flex justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="border border-slate-200 text-slate-700 hover:border-slate-300"
+                onClick={() => handleCancel(invitation.id)}
+                disabled={
+                  cancelMutation.isPending &&
+                  cancelMutation.variables === invitation.id
+                }
+              >
+                {cancelMutation.isPending &&
+                cancelMutation.variables === invitation.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    キャンセル中...
+                  </>
+                ) : (
+                  '招待キャンセル'
+                )}
+              </Button>
+            </div>
           </div>
         );
       })}

@@ -66,7 +66,7 @@ function getMyStatusLabel(status?: GroupMealParticipantStatus | null): string {
   if (status === 'JOINED' || status === 'LATE' || status === 'GO') {
     return '行く✅';
   }
-  if (status === 'DECLINED' || status === 'CANCELLED' || status === 'NOT_GO') {
+  if (status === 'DECLINED' || status === 'NOT_GO') {
     return '行かない❎';
   }
   return '未定';
@@ -228,9 +228,14 @@ function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError 
   };
 
   const hostUserId = meal.host.userId;
-  const nonHostParticipants = meal.participants.filter((participant) => participant.userId !== hostUserId);
-  const participantPreview = nonHostParticipants.slice(0, 3);
-  const additionalParticipantCount = Math.max(nonHostParticipants.length - participantPreview.length, 0);
+  const activeNonHostParticipants = meal.participants.filter(
+    (participant) => participant.userId !== hostUserId && participant.status !== 'CANCELLED'
+  );
+  const participantPreview = activeNonHostParticipants.slice(0, 3);
+  const additionalParticipantCount = Math.max(
+    activeNonHostParticipants.length - participantPreview.length,
+    0
+  );
 
   return (
     <Card className="space-y-4">

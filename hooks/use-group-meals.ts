@@ -22,6 +22,7 @@ import {
   respondGroupMeal,
   updateGroupMealMetadata
 } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
 
 const GROUP_MEALS_QUERY_KEY = ['group-meals'] as const;
 
@@ -183,11 +184,32 @@ export function useCreateGroupMeal() {
 export function useCancelGroupMealInvitation(groupMealId: string) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation<void, ApiError, string>({
     mutationFn: (invitationId) => cancelGroupMealInvitation(invitationId, token),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group-meals', groupMealId, 'invitations', token] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['group-meal', groupMealId, token] }),
+        queryClient.invalidateQueries({
+          queryKey: ['group-meals', groupMealId, 'invitations', token]
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['group-meals', groupMealId, 'candidates', token]
+        })
+      ]);
+      toast({
+        title: '招待をキャンセルしました',
+        description: '定員に空きができました。'
+      });
+    },
+    onError: (error) => {
+      const message = error?.message ?? '招待キャンセルに失敗しました';
+      console.error('Failed to cancel group meal invitation', error);
+      toast({
+        title: '招待キャンセルに失敗しました',
+        description: message
+      });
     }
   });
 }

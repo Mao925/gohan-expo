@@ -41,10 +41,12 @@ const MODE_DESCRIPTIONS: Record<"REAL" | "MEET", string> = {
 
 function myStatusLabel(status?: GroupMealParticipantStatus | null) {
   if (!status) return "未定";
-  if (status === "JOINED" || status === "LATE" || status === "GO")
+  if (status === "JOINED" || status === "LATE" || status === "GO") {
     return "行く✅";
-  if (status === "DECLINED" || status === "CANCELLED" || status === "NOT_GO")
+  }
+  if (status === "DECLINED" || status === "NOT_GO") {
     return "行かない❎";
+  }
   return "未定";
 }
 
@@ -115,8 +117,11 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
 
   const myParticipant = useMemo(() => {
     if (!groupMeal || !user) return null;
-    return groupMeal.participants.find(
-      (participant) => participant.userId === user.id
+    return (
+      groupMeal.participants.find(
+        (participant) =>
+          participant.userId === user.id && participant.status !== "CANCELLED"
+      ) ?? null
     );
   }, [groupMeal, user]);
 
@@ -132,7 +137,8 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   const nonHostParticipants = useMemo(() => {
     if (!groupMeal) return [];
     return groupMeal.participants.filter(
-      (participant) => participant.userId !== groupMeal.host.userId
+      (participant) =>
+        participant.userId !== groupMeal.host.userId && participant.status !== "CANCELLED"
     );
   }, [groupMeal]);
 
@@ -743,7 +749,6 @@ function renderParticipantStatusBadge(status: GroupMealParticipantStatus) {
           遅刻予定
         </span>
       );
-    case "CANCELLED":
     case "NOT_GO":
       return (
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
