@@ -7,7 +7,6 @@ export function useBrowserContext() {
   return useQuery<BrowserContext>({
     queryKey: ['browserContext'],
     queryFn: fetchBrowserContext,
-    staleTime: Infinity,
-    cacheTime: Infinity
+    staleTime: Infinity
   });
 }
