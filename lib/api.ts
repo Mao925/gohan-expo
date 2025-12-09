@@ -146,6 +146,8 @@ export type GroupMealInvitationSummary = {
   invitedAt: string;
   isCanceled: boolean;
   canceledAt: string | null;
+  status?: GroupMealParticipantStatus;
+  participantStatus?: GroupMealParticipantStatus;
   lineStatus: InvitationLineStatus;
   firstOpenedAt: string | null;
   lastOpenedAt: string | null;
