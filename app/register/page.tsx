@@ -107,12 +107,18 @@ export default function RegisterPage() {
         >
           LINEで新規登録
         </Button>
-        <p className="text-center text-sm text-slate-600">
-          すでにアカウントをお持ちですか？{' '}
-          <Link href="/login" className="text-brand">
-            ログインはこちら
-          </Link>
-        </p>
+        <div className="mt-6 space-y-2">
+          <p className="text-center text-sm text-slate-600">
+            すでにアカウントをお持ちの方
+          </p>
+          <Button
+            variant="outline"
+            className="w-full border-[var(--brand)] text-[var(--brand)] bg-white hover:bg-[var(--brand)]/10"
+            asChild
+          >
+            <Link href="/login">ログインはこちら</Link>
+          </Button>
+        </div>
       </form>
     </Card>
   );
