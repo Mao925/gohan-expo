@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
+import { resolveSafeRedirect } from '@/lib/redirect';
 
 type Status = 'loading' | 'success' | 'error';
 
@@ -20,13 +21,17 @@ export default function LineCallbackPage() {
   const token = searchParams.get('token');
   const newUserParam = searchParams.get('newUser') ?? '';
   const errorParam = searchParams.get('error');
+  const redirectParam = searchParams.get('redirect');
   const isNewUser = newUserParam.toLowerCase() === 'true';
+  const safeRedirect = resolveSafeRedirect(redirectParam);
 
   // 🔹 新規登録時のみオンボーディングへ
-  const destination = useMemo(
-    () => (isNewUser ? '/onboarding' : '/community/join'),
-    [isNewUser]
-  );
+  const destination = useMemo(() => {
+    if (isNewUser) {
+      return '/onboarding';
+    }
+    return safeRedirect ?? '/community/join';
+  }, [isNewUser, safeRedirect]);
 
   useEffect(() => {
     console.log('[LINE CALLBACK] token, newUserParam, isNewUser, errorParam', {
@@ -68,7 +73,7 @@ export default function LineCallbackPage() {
         setMessage('ログインに失敗しました。お手数ですが再度お試しください。');
       }
     })();
-  }, [destination, isNewUser, loginWithToken, router, token, newUserParam, errorParam]);
+  }, [destination, isNewUser, loginWithToken, router, token, errorParam]);
 
   return (
     <Card className="mx-auto max-w-md space-y-4 text-center">

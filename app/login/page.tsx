@@ -13,6 +13,7 @@ import { Field } from '@/components/forms/field';
 import { ErrorBanner } from '@/components/error-banner';
 import { useAuth } from '@/context/auth-context';
 import { ApiError, API_BASE_URL, SERVER_UNAVAILABLE_MESSAGE } from '@/lib/api';
+import { resolveSafeRedirect } from '@/lib/redirect';
 
 const seedEmail = process.env.NEXT_PUBLIC_SEED_EMAIL;
 const seedPassword = process.env.NEXT_PUBLIC_SEED_PASSWORD;
@@ -31,6 +32,8 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lineError = searchParams.get('lineError');
+  const redirectParam = searchParams.get('redirect');
+  const safeRedirect = resolveSafeRedirect(redirectParam);
 
   const initialError: string | null =
     lineError === 'NOT_REGISTERED'
@@ -52,7 +55,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(values);
-      router.push('/community/join');
+      router.replace(safeRedirect ?? '/community/join');
     } catch (err: any) {
       const apiError = err as ApiError | undefined;
       if (apiError?.status === 401) {
@@ -68,6 +71,9 @@ export default function LoginPage() {
   const handleLineLogin = () => {
     const url = new URL('/api/auth/line/login', API_BASE_URL);
     url.searchParams.set('mode', 'login'); // ★ ログインモード
+    if (safeRedirect) {
+      url.searchParams.set('redirect', safeRedirect);
+    }
     window.location.href = url.toString();
   };
 
