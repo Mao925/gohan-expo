@@ -67,31 +67,13 @@ export function CommunityGate({ children }: CommunityGateProps) {
     return <>{children}</>;
   }
 
-  if (data.phase === 'NO_COMMUNITY') {
-    return (
-      <CommunityNoticeCard
-        title="コミュニティに参加するとこの機能が使えます"
-        description="管理者から共有されたコミュニティコードを入力して、参加申請を行ってください。"
-        action={{ label: 'コミュニティに参加する', href: '/community/join' }}
-      />
-    );
-  }
-
-  if (data.phase === 'PENDING') {
-    return (
-      <CommunityNoticeCard
-        title={`${data.community?.name ?? 'コミュニティ'} に申請中です`}
-        description="管理者が承認すると、この画面から各機能を利用できるようになります。しばらくお待ちください。"
-        action={{
-          label: isFetching ? '確認中...' : '最新の状態を確認',
-          onClick: () => refetch(),
-          disabled: isFetching
-        }}
-      />
-    );
-  }
-
-  return null;
+  return (
+    <CommunityNoticeCard
+      title="コミュニティに参加するとこの機能が使えます"
+      description="管理者から共有された参加コードを入力して、すぐに GO飯 をお楽しみください。"
+      action={{ label: 'コミュニティに参加する', href: '/community/join' }}
+    />
+  );
 }
 
 type NoticeAction = {
