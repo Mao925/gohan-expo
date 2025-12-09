@@ -31,6 +31,7 @@ import {
 } from "@/lib/api";
 import { getTimeSlotLabel, getWeekdayLabel } from "@/lib/availability";
 import { cn } from "@/lib/utils";
+import { GroupMealPageGuard } from "./GroupMealPageGuard";
 import { InvitationList } from "./InvitationList";
 import { InvitationOpenTracker } from "./InvitationOpenTracker";
 
@@ -56,9 +57,11 @@ export default function GroupMealDetailPage({
   params: { id: string };
 }) {
   return (
-    <CommunityGate>
-      <GroupMealDetailContent params={params} />
-    </CommunityGate>
+    <GroupMealPageGuard>
+      <CommunityGate>
+        <GroupMealDetailContent params={params} />
+      </CommunityGate>
+    </GroupMealPageGuard>
   );
 }
 
