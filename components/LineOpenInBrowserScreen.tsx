@@ -1,5 +1,7 @@
 "use client";
 
+import type { MouseEvent } from "react";
+
 type Platform = "ios" | "android" | "other";
 
 interface LineOpenInBrowserScreenProps {
@@ -16,11 +18,21 @@ export function LineOpenInBrowserScreen({
   const ctaLabel = platform === "ios" ? "Safariで開く" : "ブラウザで開く";
   const browserLabel = platform === "ios" ? "Safari" : "ブラウザ";
 
-  const handleOpenExternal = () => {
-    if (!currentUrl) {
+  const externalUrl =
+    currentUrl ||
+    (typeof window !== "undefined" ? window.location.href : "/");
+
+  const handleOpenExternal = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+
+    if (!externalUrl || typeof window === "undefined") {
       return;
     }
-    window.open(currentUrl, "_blank", "noopener,noreferrer");
+
+    const openedWindow = window.open(externalUrl, "_blank", "noopener,noreferrer");
+    if (!openedWindow) {
+      window.location.href = externalUrl;
+    }
   };
 
   return (
@@ -41,13 +53,15 @@ export function LineOpenInBrowserScreen({
             {browserLabel}で開き直すと、より安全で快適にご利用いただけます。
           </p>
         </div>
-        <button
-          type="button"
-          className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-900"
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={handleOpenExternal}
+          className="w-full mt-4 block rounded-xl py-3 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-900 text-center"
         >
           {ctaLabel}
-        </button>
+        </a>
         {onContinue && (
           <div className="mt-2 text-center">
             <button

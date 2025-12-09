@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
-import { BrowserSuggestionBanner } from "@/components/BrowserSuggestionBanner";
 import { useCommunitySelfStatus } from "@/hooks/use-community-self-status";
 import { cn } from "@/lib/utils";
 
@@ -184,7 +183,6 @@ export function AppShell({ children }: AppShellProps) {
           ))}
         </div>
       </nav>
-      <BrowserSuggestionBanner />
     </div>
   );
 }
