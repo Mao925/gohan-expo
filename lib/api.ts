@@ -88,6 +88,10 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   return (await response.json()) as T;
 }
 
+export function isForbiddenError(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === 403;
+}
+
 export type MembershipStatus = 'pending' | 'approved' | 'rejected';
 export type LikeAnswer = 'YES' | 'NO';
 export type Weekday = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
@@ -217,6 +221,7 @@ export type GroupMeal = {
   status: GroupMealStatus;
   mode: GroupMealMode;
   host: GroupMealHost;
+  createdByUserId: string | null;
   meetingPlace: string | null;
   nearestStation: string | null;
   schedule: GroupMealSchedule | null;

@@ -5,13 +5,16 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { useGroupMealDetail, useUpdateGroupMealMetadata } from "@/hooks/use-group-meals";
+import { isForbiddenError } from "@/lib/api";
 import type { ApiError } from "@/lib/api";
 import {
   GroupMealMetadataForm,
   type GroupMealMetadataFormValues,
 } from "@/components/group-meals/group-meal-metadata-form";
+import { canManageGroupMealFrontend, GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE } from "@/features/groupMeals/permissions";
 
 export default function GroupMealMetadataEditPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
@@ -20,6 +23,7 @@ export default function GroupMealMetadataEditPage({ params }: { params: { id: st
   const { data: groupMeal, isPending, error } = useGroupMealDetail(params.id);
   const updateMutation = useUpdateGroupMealMetadata(params.id);
   const [formError, setFormError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const schedule = useMemo(() => {
     if (!groupMeal) return null;
@@ -49,7 +53,7 @@ export default function GroupMealMetadataEditPage({ params }: { params: { id: st
   }, [groupMeal, schedule]);
 
   const from = searchParams.get("from") ?? `/group-meals/${params.id}`;
-  const canEdit = Boolean(groupMeal && user && (user.isAdmin || user.id === groupMeal.host.userId));
+  const canEdit = Boolean(groupMeal && canManageGroupMealFrontend(user, groupMeal));
 
   const handleCancel = () => {
     router.push(from);
@@ -69,25 +73,30 @@ export default function GroupMealMetadataEditPage({ params }: { params: { id: st
           budget: values.budget || null,
         },
         {
-          onError: (err: ApiError) => {
-            if (err.status === 401) {
+          onError: (error) => {
+            if (isForbiddenError(error)) {
+              toast({
+                title: "操作できません",
+                description: GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE,
+              });
+              setFormError(GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE);
+              return;
+            }
+            const apiError = error as ApiError;
+            if (apiError.status === 401) {
               setFormError("認証が必要です。再ログインしてください");
               return;
             }
-            if (err.status === 403) {
-              setFormError("この箱を編集する権限がありません");
-              return;
-            }
-            if (err.status === 404) {
+            if (apiError.status === 404) {
               router.replace("/group-meals");
               return;
             }
-            setFormError(err.message ?? "箱の情報の更新に失敗しました");
-          },
+            setFormError(apiError.message ?? "箱の情報の更新に失敗しました");
+          }
         }
       );
     },
-    [router, updateMutation]
+    [router, updateMutation, toast]
   );
 
   if (isPending) {
