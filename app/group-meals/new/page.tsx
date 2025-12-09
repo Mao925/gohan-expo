@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CommunityGate } from "@/components/community/community-gate";
 import { ErrorBanner } from "@/components/error-banner";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -117,7 +118,8 @@ export default function NewGroupMealPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
+    <CommunityGate>
+      <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold md:text-2xl">新しい箱を作る</h1>
@@ -310,6 +312,7 @@ export default function NewGroupMealPage() {
           </div>
         </form>
       </section>
-    </main>
+      </main>
+    </CommunityGate>
   );
 }

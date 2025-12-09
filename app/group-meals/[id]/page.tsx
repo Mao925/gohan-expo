@@ -12,6 +12,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { FavoriteMealsList } from "@/components/favorite-meals-list";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/components/ui/use-toast";
 import {
   useGroupMealCandidates,
   useGroupMealDetail,
@@ -28,12 +29,14 @@ import {
   GroupMealCandidate,
   GroupMealParticipantStatus,
   formatBudgetLabel,
+  isForbiddenError,
 } from "@/lib/api";
 import { getTimeSlotLabel, getWeekdayLabel } from "@/lib/availability";
 import { cn } from "@/lib/utils";
 import { GroupMealPageGuard } from "./GroupMealPageGuard";
 import { InvitationList } from "./InvitationList";
 import { InvitationOpenTracker } from "./InvitationOpenTracker";
+import { canManageGroupMealFrontend, GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE } from "@/features/groupMeals/permissions";
 
 const MODE_DESCRIPTIONS: Record<"REAL" | "MEET", string> = {
   REAL: "リアルで近場に集まる今日の GO飯。持ち物と参加目標を確認して、さっと集合！",
@@ -70,6 +73,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const { toast } = useToast();
   const [actionError, setActionError] = useState<string | null>(null);
   const { data: groupMeal, isPending, error } = useGroupMealDetail(params.id);
   const schedule = useMemo(() => {
@@ -200,10 +204,20 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
       onSuccess: () => {
         router.push(`/group-meals?mode=${groupMeal.mode}`);
       },
-      onError: (err: any) =>
+      onError: (err: any) => {
+        const forbidden = isForbiddenError(err);
+        if (forbidden) {
+          toast({
+            title: "操作できません",
+            description: GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE,
+          });
+        }
         setActionError(
-          (err as ApiError | undefined)?.message ?? "箱の削除に失敗しました"
-        ),
+          forbidden
+            ? GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE
+            : (err as ApiError | undefined)?.message ?? "箱の削除に失敗しました"
+        );
+      },
     });
   };
 
@@ -281,9 +295,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   const meetingPlaceAddress = resolvedSchedule.place?.address;
   const budgetLabel = formatBudgetLabel(groupMeal.budget);
 
-  const canEditMetadata = Boolean(
-    groupMeal && user && (user.isAdmin || user.id === groupMeal.host.userId)
-  );
+  const canManage = Boolean(groupMeal && canManageGroupMealFrontend(user, groupMeal));
 
   const candidates = candidatesData?.candidates ?? [];
   const availableCandidates = candidates.filter(
@@ -317,7 +329,7 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
             <Button variant="ghost" size="sm" asChild>
               <Link href="/group-meals?mode=REAL">一覧に戻る</Link>
             </Button>
-            {canEditMetadata ? (
+            {canManage ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -326,14 +338,14 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
                 箱の情報を編集
               </Button>
             ) : null}
-          {user?.isAdmin ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              className="text-red-600 hover:bg-red-50"
-            >
+          {canManage ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                className="text-red-600 hover:bg-red-50"
+              >
               <Trash2 className="h-4 w-4" />
               <span>削除</span>
             </Button>

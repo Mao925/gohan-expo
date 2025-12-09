@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CalendarDays, Clock3, Trash2, Users } from 'lucide-react';
+import { CalendarDays, Clock3, Trash2 } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ProfileAvatar } from '@/components/profile-avatar';
+import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { useMeetGroupMeals, useRealGroupMeals, useJoinGroupMeal, useLeaveGroupMeal, useRespondGroupMeal, useDeleteGroupMeal } from '@/hooks/use-group-meals';
 import {
@@ -16,9 +17,12 @@ import {
   GroupMeal,
   GroupMealMode,
   GroupMealParticipantStatus,
-  formatBudgetLabel
+  formatBudgetLabel,
+  isForbiddenError
 } from '@/lib/api';
+import type { User } from '@/lib/types';
 import { getTimeSlotLabel, getWeekdayLabel } from '@/lib/availability';
+import { canManageGroupMealFrontend, GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE } from '@/features/groupMeals/permissions';
 import { cn } from '@/lib/utils';
 
 const MODE_TABS: { mode: GroupMealMode; label: string; description: string }[] = [
@@ -94,6 +98,7 @@ function GroupMealsContent() {
   const sortedMeals = groupMeals
     .slice()
     .sort((a, b) => getGroupMealTimestamp(a) - getGroupMealTimestamp(b));
+  const canCreateBox = Boolean(user);
 
   return (
     <div className="space-y-6">
@@ -116,7 +121,7 @@ function GroupMealsContent() {
               <Link href={`/group-meals?mode=${tab.mode}`}>{tab.label}</Link>
             </Button>
           ))}
-          {user?.isAdmin ? (
+          {canCreateBox ? (
             <Button size="sm" asChild variant="secondary">
               <Link href="/group-meals/new">新しい箱を作る</Link>
             </Button>
@@ -141,8 +146,7 @@ function GroupMealsContent() {
             <GroupMealCard
               key={meal.id}
               meal={meal}
-              currentUserId={user?.id}
-              currentUserIsAdmin={user?.isAdmin ?? false}
+              currentUser={user}
               onActionError={(message) => setActionError(message)}
             />
           ))}
@@ -154,18 +158,19 @@ function GroupMealsContent() {
 
 type GroupMealCardProps = {
   meal: GroupMeal;
-  currentUserId?: string;
-  currentUserIsAdmin?: boolean;
+  currentUser?: User | null;
   onActionError?: (message: string | null) => void;
 };
 
-function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError }: GroupMealCardProps) {
+function GroupMealCard({ meal, currentUser, onActionError }: GroupMealCardProps) {
   const respondMutation = useRespondGroupMeal(meal.id);
   const joinMutation = useJoinGroupMeal(meal.id);
   const leaveMutation = useLeaveGroupMeal(meal.id);
   const deleteMutation = useDeleteGroupMeal({ mode: meal.mode });
+  const { toast } = useToast();
+  const currentUserId = currentUser?.id;
   const isHost = meal.host.userId === currentUserId;
-  const canDelete = isHost || currentUserIsAdmin;
+  const canManage = canManageGroupMealFrontend(currentUser, meal);
   const myParticipant = meal.participants.find((participant) => participant.userId === currentUserId);
   const fallbackStatus =
     meal.myStatus && meal.myStatus !== 'NONE' ? (meal.myStatus as GroupMealParticipantStatus) : undefined;
@@ -177,13 +182,28 @@ function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError 
   const canLeave = !isHost && isGoing;
   const canJoinAsGuest = !isHost && !myParticipant && meal.status === 'OPEN' && meal.remainingSlots > 0;
   const handleDelete = () => {
+    if (!canManage) {
+      return;
+    }
     if (!window.confirm('この箱を削除しますか？この操作は元に戻せません。')) {
       return;
     }
     onActionError?.(null);
     deleteMutation.mutate(meal.id, {
-      onError: (err: any) =>
-        onActionError?.((err as ApiError | undefined)?.message ?? '箱の削除に失敗しました')
+      onError: (err: any) => {
+        const forbidden = isForbiddenError(err);
+        if (forbidden) {
+          toast({
+            title: '操作できません',
+            description: GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE
+          });
+        }
+        const message =
+          forbidden
+            ? GROUP_MEAL_MANAGE_FORBIDDEN_MESSAGE
+            : (err as ApiError | undefined)?.message ?? '箱の削除に失敗しました';
+        onActionError?.(message);
+      }
     });
   };
 
@@ -305,20 +325,16 @@ function GroupMealCard({ meal, currentUserId, currentUserIsAdmin, onActionError 
           <Button asChild size="sm" variant="secondary">
             <Link href={`/group-meals/${meal.id}`}>詳細</Link>
           </Button>
-          {currentUserIsAdmin ? (
+          {canManage ? (
             <Button
               size="sm"
               variant="ghost"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
+              className="text-red-600 hover:bg-red-50"
               aria-label="この箱を削除する"
             >
               <Trash2 className="h-4 w-4" />
-            </Button>
-          ) : null}
-          {canDelete ? (
-            <Button size="sm" variant="ghost" disabled>
-              管理者
             </Button>
           ) : null}
         </div>

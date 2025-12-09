@@ -131,9 +131,6 @@ export function useDeleteGroupMeal(options?: { mode?: GroupMealMode }) {
 
   return useMutation<void, ApiError, string>({
     mutationFn: (groupMealId) => {
-      if (!user?.isAdmin) {
-        throw new ApiError('Only admin can delete group meals', 403);
-      }
       return deleteGroupMeal(groupMealId, token);
     },
     onSuccess: () => {
