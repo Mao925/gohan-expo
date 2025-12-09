@@ -16,23 +16,18 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { ApiError, apiFetch, createCommunityInvite, redeemCommunityInvite } from '@/lib/api';
-import { CommunityStatus } from '@/lib/types';
+import { ApiError, createCommunityInvite, redeemCommunityInvite } from '@/lib/api';
 import { CommunityPhase, useCommunitySelfStatus } from '@/hooks/use-community-self-status';
+import { JoinCommunityResponse, joinCommunity } from '@/lib/api/community';
 
 const schema = z.object({
   communityName: z.string().min(2, 'コミュニティ名を入力してください'),
-  communityCode: z.string().length(8, '8桁のコードを入力してください')
+  joinCode: z.string().length(8, '8桁の参加コードを入力してください')
 });
 
 const STORAGE_KEY = 'gohan_last_community_join';
 
 type FormValues = z.infer<typeof schema>;
-
-type JoinResponse = {
-  status: CommunityStatus;
-  communityName?: string;
-};
 
 type RedeemState =
   | 'idle'
@@ -64,7 +59,7 @@ export default function CommunityJoinPage() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { communityName: '', communityCode: '' }
+    defaultValues: { communityName: '', joinCode: '' }
   });
 
   const {
@@ -75,27 +70,19 @@ export default function CommunityJoinPage() {
     refetch: refetchStatus
   } = useCommunitySelfStatus(Boolean(token));
 
-  useEffect(() => {
-    // 一般ユーザーは承認後にメイン画面へ誘導する
-    if (statusData?.phase === 'APPROVED' && !statusData.isAdmin) {
-      router.replace('/members');
-    }
-  }, [statusData, router]);
-
-const joinMutation = useMutation<JoinResponse, ApiError, FormValues>({
-  mutationFn: (values) => apiFetch<JoinResponse>('/api/community/join', { method: 'POST', data: values, token }),
-  onSuccess: async (data, variables) => {
-    await queryClient.invalidateQueries({ queryKey: ['community-self-status', token] });
-    await refetchStatus();
-    if (data.status === 'APPROVED') {
+  const joinMutation = useMutation<JoinCommunityResponse, ApiError, FormValues>({
+    mutationFn: (values) => joinCommunity(values, token),
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['community-self-status', token] });
+      await refetchStatus();
       await refreshUser();
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(variables));
+      }
+      form.reset();
+      router.replace('/group-meals');
     }
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(variables));
-    }
-    form.reset();
-  }
-});
+  });
 
   useEffect(() => {
     if (!inviteToken) {
@@ -194,38 +181,24 @@ const joinMutation = useMutation<JoinResponse, ApiError, FormValues>({
   const badgeStatus = pillByPhase[phase];
   const combinedError = error ?? (statusError as ApiError | undefined)?.message ?? null;
 
-  if (phase === 'PENDING') {
-    return (
-      <CommunityNoticeCard
-        title={`${communityName ?? 'コミュニティ'} に申請中です`}
-        description="管理者が承認すると、この画面から各機能を利用できるようになります。しばらくお待ちください。"
-        action={{
-          label: statusFetching ? '確認中...' : '最新の状態を確認',
-          onClick: () => refetchStatus(),
-          disabled: statusFetching
-        }}
-      />
-    );
-  }
-
   if (phase === 'APPROVED' && !isAdmin) {
     return (
       <CommunityNoticeCard
-        title="コミュニティが承認されました"
-        description="メンバー一覧へ移動します。"
-        action={{ label: 'メンバーを確認する', href: '/members' }}
+        title={`${communityName ?? 'コミュニティ'} に参加済みです`}
+        description="GO飯を楽しむ準備は完了しています。グループミールへ進みましょう。"
+        action={{ label: 'グループミールへ', href: '/group-meals' }}
       />
     );
   }
 
-  const showForm = phase === 'NO_COMMUNITY';
+  const showForm = phase !== 'APPROVED';
 
   return (
     <main className="mx-auto max-w-4xl md:max-w-5xl space-y-6 md:space-y-8">
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">コミュニティ参加</h1>
         <p className="mt-2 text-sm text-slate-500">
-          管理者から共有されたコードで参加申請してください。
+          管理者から共有されたコードで参加してください。
         </p>
       </div>
 
@@ -329,17 +302,17 @@ const joinMutation = useMutation<JoinResponse, ApiError, FormValues>({
 
           {['invalid', 'expired', 'alreadyUsed', 'error'].includes(redeemState) && (
             <div className="space-y-2">
-              <p className="text-xs text-slate-500">
-                招待リンクを使った参加に失敗しました。通常の申請フローで参加することもできます。
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => router.replace('/community/join')}
-              >
-                通常のコミュニティ申請画面へ
-              </Button>
+                <p className="text-xs text-slate-500">
+                  招待リンクを使った参加に失敗しました。通常の参加フローで参加することもできます。
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.replace('/community/join')}
+                >
+                  通常のコミュニティ参加画面へ
+                </Button>
             </div>
           )}
         </Card>
@@ -371,7 +344,7 @@ const joinMutation = useMutation<JoinResponse, ApiError, FormValues>({
                   try {
                     await joinMutation.mutateAsync(values);
                   } catch (err: any) {
-                    setError(err?.message ?? '申請に失敗しました');
+                    setError(err?.message ?? 'コミュニティ名または参加コードが正しくありません。');
                   }
                 })}
               >
@@ -379,27 +352,27 @@ const joinMutation = useMutation<JoinResponse, ApiError, FormValues>({
                   <Input placeholder="KING" {...form.register('communityName')} />
                 </Field>
                 <Field
-                  label="8桁のコミュニティコード"
-                  error={form.formState.errors.communityCode?.message}
+                  label="8桁の参加コード"
+                  error={form.formState.errors.joinCode?.message}
                 >
-                  <Input placeholder="KING1234" maxLength={8} {...form.register('communityCode')} />
+                  <Input placeholder="KING1234" maxLength={8} {...form.register('joinCode')} />
                 </Field>
                 <Button
                   type="submit"
                   disabled={joinMutation.isPending || statusFetching}
                   className="w-full"
                 >
-                  {joinMutation.isPending ? '送信中...' : showForm ? '参加申請する' : 'コードを更新する'}
+                  {joinMutation.isPending ? '送信中...' : showForm ? '参加する' : 'コードを更新する'}
                 </Button>
               </form>
             ) : (
               <div className="space-y-4 rounded-2xl border border-orange-100 bg-orange-50/60 p-4">
                 <p className="text-sm text-slate-700">
-                  コミュニティが承認されています。管理者として申請状況を確認する場合は、承認画面へ移動してください。
+                  コミュニティ参加が完了しています。管理者として参加状況を確認する場合は、管理画面へ移動してください。
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="secondary">
-                    <Link href="/admin">承認画面を開く</Link>
+                    <Link href="/admin">管理画面を開く</Link>
                   </Button>
                   <Button asChild variant="ghost">
                     <Link href="/members">メンバー一覧へ</Link>
