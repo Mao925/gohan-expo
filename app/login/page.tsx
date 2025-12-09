@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { LineOpenInBrowserScreen } from '@/components/LineOpenInBrowserScreen';
+import { useLineInAppBrowserEnvironment } from '@/hooks/useLineInAppBrowserEnvironment';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,6 +40,12 @@ export default function LoginPage() {
       : null;
 
   const [error, setError] = useState<string | null>(initialError);
+  const [forceContinue, setForceContinue] = useState(false);
+
+  const { isClient, isLineInAppBrowser, platform, currentUrl } =
+    useLineInAppBrowserEnvironment();
+  const showLineWarning =
+    isClient && isLineInAppBrowser && !forceContinue;
 
   const {
     register,
@@ -70,6 +78,16 @@ export default function LoginPage() {
     url.searchParams.set('mode', 'login'); // ★ ログインモード
     window.location.href = url.toString();
   };
+
+  if (showLineWarning) {
+    return (
+      <LineOpenInBrowserScreen
+        platform={platform}
+        currentUrl={currentUrl}
+        onContinue={() => setForceContinue(true)}
+      />
+    );
+  }
 
   return (
     <Card className="mx-auto max-w-md">
