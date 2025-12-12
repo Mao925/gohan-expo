@@ -195,6 +195,7 @@ function MembersContent() {
                 isAdmin ? () => handleDeleteUser(member.id) : undefined
               }
               isUpdating={updatingState?.memberId === member.id}
+              showMatchBadge={false}
             />
           ))}
         </div>
