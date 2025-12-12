@@ -585,6 +585,46 @@ export async function updateLikeStatus(
   });
 }
 
+export type SuperLikeSummary = {
+  toUserId: string;
+  createdAt: string;
+};
+
+export type SuperLikeListResponse = {
+  superLikes: SuperLikeSummary[];
+};
+
+export type SuperLikeMatchResponse =
+  | { matched: false }
+  | {
+      matched: true;
+      matchedAt: string;
+      partnerName: string;
+      partnerFavoriteMeals: string[];
+    };
+
+export async function fetchSuperLikes(): Promise<SuperLikeListResponse> {
+  return apiFetch<SuperLikeListResponse>('/api/superlikes');
+}
+
+export async function createSuperLike(
+  targetUserId: string,
+): Promise<SuperLikeMatchResponse> {
+  return apiFetch<SuperLikeMatchResponse>('/api/superlikes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ targetUserId }),
+  });
+}
+
+export async function deleteSuperLike(targetUserId: string): Promise<void> {
+  await apiFetch<void>(`/api/superlikes/${targetUserId}`, {
+    method: 'DELETE',
+  });
+}
+
 export type CommunityInvite = {
   id: string;
   token: string;
