@@ -27,7 +27,6 @@ type NavItem = {
 const COMMON_NAV_ITEMS: NavItem[] = [
   { href: "/members", label: "メンバー", icon: Users },
   { href: "/match/like", label: "ふたりでGO飯", icon: HeartHandshake, showInShell: false },
-  { href: "/availability", label: "日程調整", icon: CalendarDays },
   { href: "/group-meals", label: "みんなでGO飯", icon: UtensilsCrossed },
   { href: "/profile", label: "プロフィール", icon: UserRound }
 ];
@@ -62,7 +61,7 @@ export function AppShell({ children }: AppShellProps) {
   const baseNavItems: NavItem[] = isAdmin
     ? [
         // 管理者だけコミュニティ管理や承認タブを見せる
-        ...COMMON_NAV_ITEMS.filter((item) => item.href !== "/availability"),
+        ...COMMON_NAV_ITEMS,
         COMMUNITY_NAV_ITEM,
         { href: "/admin", label: "承認待ち", icon: ShieldCheck },
       ]
