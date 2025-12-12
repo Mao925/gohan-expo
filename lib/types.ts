@@ -34,6 +34,8 @@ export type MemberRelationship = {
   canToggleToYes?: boolean;
   canToggleToNo?: boolean;
   matchedAt?: string | null;
+  likedByMe: boolean;
+  superLikedByMe: boolean;
 };
 
 export type RelationshipCard = MemberRelationship;

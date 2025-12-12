@@ -474,6 +474,8 @@ export type Member = {
   favoriteMeals?: string[];
   profileImageUrl?: string | null;
   myLikeStatus?: LikeStatus;
+  likedByMe: boolean;
+  superLikedByMe: boolean;
   isMutualLike?: boolean;
   profile?: Profile | null;
 };
