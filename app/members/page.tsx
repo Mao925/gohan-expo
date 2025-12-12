@@ -9,12 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/components/ui/use-toast";
 import {
   ApiError,
   deleteMember,
   fetchMembers,
   LikeAnswer,
   updateLikeStatus,
+  fetchSuperLikes,
+  createSuperLike,
+  deleteSuperLike,
 } from "@/lib/api";
 import { LikeStatus, Member } from "@/lib/types";
 
@@ -38,10 +42,38 @@ function MembersContent() {
   const [members, setMembers] = useState<Member[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [updatingState, setUpdatingState] = useState<UpdatingState>(null);
+  const [superLikedUserId, setSuperLikedUserId] = useState<string | null>(null);
+  const [superLikeLoadingMemberId, setSuperLikeLoadingMemberId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     setMembers(data ?? []);
   }, [data]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!user?.id) {
+      setSuperLikedUserId(null);
+      return;
+    }
+
+    const loadSuperLikesForUser = async () => {
+      try {
+        const data = await fetchSuperLikes();
+        if (!isMounted) return;
+        setSuperLikedUserId(data.superLikes[0]?.toUserId ?? null);
+      } catch (err) {
+        console.error("Failed to load super likes", err);
+      }
+    };
+
+    loadSuperLikesForUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
 
   const isInitialLoading = isPending && members.length === 0;
   const apiErrorMessage = (error as ApiError | undefined)?.message ?? null;
@@ -96,6 +128,43 @@ function MembersContent() {
       );
     } finally {
       setUpdatingState(null);
+    }
+  };
+
+  const handleToggleSuperLike = async (memberId: string) => {
+    if (superLikeLoadingMemberId === memberId) return;
+    const isCurrentlySuperLiked = superLikedUserId === memberId;
+
+    setActionError(null);
+    setSuperLikeLoadingMemberId(memberId);
+
+    try {
+      if (isCurrentlySuperLiked) {
+        await deleteSuperLike(memberId);
+        setSuperLikedUserId(null);
+      } else {
+        const result = await createSuperLike(memberId);
+        setSuperLikedUserId(memberId);
+
+        if (result.matched) {
+          toast({
+            title: result.partnerName
+              ? `${result.partnerName}さんとマッチしました！`
+              : "マッチが成立しました！",
+            description:
+              result.partnerFavoriteMeals?.length
+                ? `好きなご飯: ${result.partnerFavoriteMeals.join("・")}`
+                : undefined,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to toggle super like", err);
+      setActionError(
+        "スーパーいいねの送信に失敗しました。通信環境を確認して再度お試しください。"
+      );
+    } finally {
+      setSuperLikeLoadingMemberId(null);
     }
   };
 
@@ -172,6 +241,9 @@ function MembersContent() {
               member={member}
               isAdmin={isAdmin}
               onToggleLike={handleToggleLike}
+              isSuperLiked={superLikedUserId === member.id}
+              isSuperLikeLoading={superLikeLoadingMemberId === member.id}
+              onToggleSuperLike={() => handleToggleSuperLike(member.id)}
               onDeleteUser={
                 isAdmin ? () => handleDeleteUser(member.id) : undefined
               }
