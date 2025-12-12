@@ -16,11 +16,10 @@ import {
   fetchMembers,
   LikeAnswer,
   updateLikeStatus,
-  fetchSuperLikes,
   createSuperLike,
   deleteSuperLike,
 } from "@/lib/api";
-import { LikeStatus, Member } from "@/lib/types";
+import { Member } from "@/lib/types";
 
 type UpdatingState = { memberId: string } | null;
 
@@ -42,38 +41,12 @@ function MembersContent() {
   const [members, setMembers] = useState<Member[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [updatingState, setUpdatingState] = useState<UpdatingState>(null);
-  const [superLikedUserId, setSuperLikedUserId] = useState<string | null>(null);
   const [superLikeLoadingMemberId, setSuperLikeLoadingMemberId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     setMembers(data ?? []);
   }, [data]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    if (!user?.id) {
-      setSuperLikedUserId(null);
-      return;
-    }
-
-    const loadSuperLikesForUser = async () => {
-      try {
-        const data = await fetchSuperLikes();
-        if (!isMounted) return;
-        setSuperLikedUserId(data.superLikes[0]?.toUserId ?? null);
-      } catch (err) {
-        console.error("Failed to load super likes", err);
-      }
-    };
-
-    loadSuperLikesForUser();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id]);
 
   const isInitialLoading = isPending && members.length === 0;
   const apiErrorMessage = (error as ApiError | undefined)?.message ?? null;
@@ -82,49 +55,23 @@ function MembersContent() {
       ? "ログインし直してください"
       : apiErrorMessage;
   const errorMessage = actionError ?? friendlyApiError;
-  const handleToggleLike = async (
-    memberId: string,
-    currentStatus: LikeStatus
-  ) => {
+  const handleToggleLike = async (memberId: string) => {
     if (updatingState?.memberId === memberId) return;
     const targetMember = members.find((item) => item.id === memberId);
     if (!targetMember) return;
 
-    const nextAnswer: LikeAnswer = currentStatus === "YES" ? "NO" : "YES";
-    const previousStatus = targetMember.myLikeStatus ?? "NONE";
-    const previousIsMutual = targetMember.isMutualLike;
+    const nextAnswer: LikeAnswer = targetMember.likedByMe ? "NO" : "YES";
 
     setActionError(null);
     setUpdatingState({ memberId });
-    setMembers((prev) =>
-      prev.map((item) =>
-        item.id === memberId
-          ? {
-              ...item,
-              myLikeStatus: nextAnswer,
-              isMutualLike: nextAnswer === "YES" ? item.isMutualLike : false,
-            }
-          : item
-      )
-    );
 
     try {
       await updateLikeStatus(memberId, nextAnswer);
+      await refetch();
     } catch (err: any) {
       console.error("Failed to update like status", err);
       setActionError(
         "いいねの送信に失敗しました。通信環境を確認して再度お試しください。"
-      );
-      setMembers((prev) =>
-        prev.map((item) =>
-          item.id === memberId
-            ? {
-                ...item,
-                myLikeStatus: previousStatus,
-                isMutualLike: previousIsMutual,
-              }
-            : item
-        )
       );
     } finally {
       setUpdatingState(null);
@@ -133,7 +80,9 @@ function MembersContent() {
 
   const handleToggleSuperLike = async (memberId: string) => {
     if (superLikeLoadingMemberId === memberId) return;
-    const isCurrentlySuperLiked = superLikedUserId === memberId;
+    const targetMember = members.find((item) => item.id === memberId);
+    if (!targetMember) return;
+    const isCurrentlySuperLiked = targetMember.superLikedByMe;
 
     setActionError(null);
     setSuperLikeLoadingMemberId(memberId);
@@ -141,11 +90,8 @@ function MembersContent() {
     try {
       if (isCurrentlySuperLiked) {
         await deleteSuperLike(memberId);
-        setSuperLikedUserId(null);
       } else {
         const result = await createSuperLike(memberId);
-        setSuperLikedUserId(memberId);
-
         if (result.matched) {
           toast({
             title: result.partnerName
@@ -158,6 +104,8 @@ function MembersContent() {
           });
         }
       }
+
+      await refetch();
     } catch (err: any) {
       console.error("Failed to toggle super like", err);
       setActionError(
@@ -240,10 +188,9 @@ function MembersContent() {
               key={member.id}
               member={member}
               isAdmin={isAdmin}
-              onToggleLike={handleToggleLike}
-              isSuperLiked={superLikedUserId === member.id}
+              onLike={handleToggleLike}
+              onSuperLike={handleToggleSuperLike}
               isSuperLikeLoading={superLikeLoadingMemberId === member.id}
-              onToggleSuperLike={() => handleToggleSuperLike(member.id)}
               onDeleteUser={
                 isAdmin ? () => handleDeleteUser(member.id) : undefined
               }

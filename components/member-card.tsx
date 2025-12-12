@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { formatBudgetLabel } from '@/lib/api';
-import { LikeStatus, Member } from '@/lib/types';
+import { Member } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Heart, Loader2, Star } from 'lucide-react';
 import {
@@ -19,25 +19,22 @@ import {
 type MemberCardProps = {
   member: Member;
   isAdmin?: boolean;
-  onToggleLike?: (memberId: string, currentStatus: LikeStatus) => void;
+  onLike?: (memberId: string) => Promise<void> | void;
   onDeleteUser?: () => void;
   isUpdating?: boolean;
-  isSuperLiked?: boolean;
   isSuperLikeLoading?: boolean;
-  onToggleSuperLike?: () => void;
+  onSuperLike?: (memberId: string) => Promise<void> | void;
 };
 
 export function MemberCard({
   member,
   isAdmin,
-  onToggleLike,
+  onLike,
   onDeleteUser,
   isUpdating,
-  isSuperLiked,
   isSuperLikeLoading,
-  onToggleSuperLike,
+  onSuperLike,
 }: MemberCardProps) {
-  const effectiveStatus: LikeStatus = member.myLikeStatus ?? 'NONE';
   const profile = member.profile ?? null;
   const name = profile?.name ?? member.name ?? '名前未設定';
   const budgetLabel = profile?.defaultBudget ? formatBudgetLabel(profile.defaultBudget) : null;
@@ -49,14 +46,16 @@ export function MemberCard({
   ) as string[];
   const ngFoods = profile?.ngFoods ?? [];
   const canShowSuperLikeButton = !isAdmin;
-  const effectiveSuperLike = Boolean(isSuperLiked);
-  const isLikeActive = effectiveStatus === 'YES';
+  const likedByMe = Boolean(member.likedByMe);
+  const superLikedByMe = Boolean(member.superLikedByMe);
+  const isHeartActive = likedByMe && !superLikedByMe;
+  const isStarActive = superLikedByMe;
   const likeButtonDisabled = Boolean(isUpdating);
-  const superLikeDisabled = Boolean(isSuperLikeLoading || !onToggleSuperLike);
+  const superLikeDisabled = Boolean(isSuperLikeLoading || !onSuperLike);
 
   const likeButtonClass = cn(
     'flex h-12 w-12 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-    isLikeActive
+    isHeartActive
       ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 focus-visible:ring-red-300'
       : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50 focus-visible:ring-slate-300',
     likeButtonDisabled && 'cursor-not-allowed opacity-70'
@@ -64,7 +63,7 @@ export function MemberCard({
 
   const superLikeButtonClass = cn(
     'flex h-12 w-12 items-center justify-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-    effectiveSuperLike
+    isStarActive
       ? 'border-yellow-200 bg-yellow-50 text-yellow-500 hover:bg-yellow-100 focus-visible:ring-yellow-300'
       : 'border-slate-200 bg-white text-slate-300 hover:bg-slate-50 focus-visible:ring-slate-300',
     superLikeDisabled && 'cursor-not-allowed opacity-70'
@@ -140,21 +139,21 @@ export function MemberCard({
             <button
               type="button"
               className={likeButtonClass}
-              onClick={() => onToggleLike?.(member.id, effectiveStatus)}
+              onClick={() => onLike?.(member.id)}
               disabled={likeButtonDisabled}
             >
               {isUpdating ? (
                 <Loader2 className="h-5 w-5 animate-spin text-current" />
               ) : (
-                <Heart className="h-6 w-6 transition-colors duration-200" fill={isLikeActive ? 'currentColor' : 'none'} />
+                <Heart className="h-6 w-6 transition-colors duration-200" fill={isHeartActive ? 'currentColor' : 'none'} />
               )}
-              <span className="sr-only">{isLikeActive ? 'いいねを外す' : 'いいねする'}</span>
+              <span className="sr-only">{isHeartActive ? 'いいねを外す' : 'いいねする'}</span>
             </button>
             {canShowSuperLikeButton && (
               <button
                 type="button"
                 className={superLikeButtonClass}
-                onClick={onToggleSuperLike}
+                onClick={() => onSuperLike?.(member.id)}
                 disabled={superLikeDisabled}
               >
                 {isSuperLikeLoading ? (
@@ -162,11 +161,11 @@ export function MemberCard({
                 ) : (
                   <Star
                     className="h-6 w-6 transition-colors duration-200"
-                    fill={effectiveSuperLike ? 'currentColor' : 'none'}
+                    fill={isStarActive ? 'currentColor' : 'none'}
                   />
                 )}
                 <span className="sr-only">
-                  {effectiveSuperLike ? 'スーパーいいねを取り消す' : 'スーパーいいねを送る'}
+                  {isStarActive ? 'スーパーいいねを取り消す' : 'スーパーいいねを送る'}
                 </span>
               </button>
             )}
