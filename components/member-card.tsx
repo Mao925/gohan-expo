@@ -24,6 +24,7 @@ type MemberCardProps = {
   isUpdating?: boolean;
   isSuperLikeLoading?: boolean;
   onSuperLike?: (memberId: string) => Promise<void> | void;
+  showMatchBadge?: boolean;
 };
 
 export function MemberCard({
@@ -34,6 +35,7 @@ export function MemberCard({
   isUpdating,
   isSuperLikeLoading,
   onSuperLike,
+  showMatchBadge = true,
 }: MemberCardProps) {
   const profile = member.profile ?? null;
   const name = profile?.name ?? member.name ?? '名前未設定';
@@ -82,7 +84,9 @@ export function MemberCard({
             <div className="flex flex-1 flex-col gap-2">
               <div className="flex items-center gap-2">
                 <p className="text-lg font-semibold text-slate-900">{name}</p>
-                {member.isMutualLike ? <Badge variant="secondary">マッチ済み</Badge> : null}
+                {showMatchBadge && member.isMutualLike ? (
+                  <Badge variant="secondary">マッチ済み</Badge>
+                ) : null}
               </div>
             </div>
           </div>
