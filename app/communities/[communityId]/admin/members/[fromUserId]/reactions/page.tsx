@@ -37,8 +37,10 @@ const getSectionErrorMessage = (error: unknown) => {
 
 export default function MemberReactionsPage() {
   const params = useParams();
-  const communityId = params?.communityId;
-  const fromUserId = params?.fromUserId;
+  const communityParam = params?.communityId;
+  const fromUserParam = params?.fromUserId;
+  const communityId = Array.isArray(communityParam) ? communityParam[0] : communityParam;
+  const fromUserId = Array.isArray(fromUserParam) ? fromUserParam[0] : fromUserParam;
   const { user } = useAuth();
   const isAdmin = Boolean(user?.isAdmin);
   const queryEnabled = Boolean(communityId && fromUserId && isAdmin);
