@@ -7,6 +7,7 @@ import { ErrorBanner } from "@/components/error-banner";
 import { MemberCard } from "@/components/member-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useCommunitySelfStatus } from "@/hooks/use-community-self-status";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/components/ui/use-toast";
@@ -38,6 +39,8 @@ function MembersContent() {
     queryKey: ["members"],
     queryFn: fetchMembers,
   });
+  const { data: communityStatus } = useCommunitySelfStatus(Boolean(user));
+  const communityId = communityStatus?.community?.id;
   const [members, setMembers] = useState<Member[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [updatingState, setUpdatingState] = useState<UpdatingState>(null);
@@ -183,21 +186,29 @@ function MembersContent() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {members.map((member) => (
-            <MemberCard
-              key={member.id}
-              member={member}
-              isAdmin={isAdmin}
-              onLike={handleToggleLike}
-              onSuperLike={handleToggleSuperLike}
-              isSuperLikeLoading={superLikeLoadingMemberId === member.id}
-              onDeleteUser={
-                isAdmin ? () => handleDeleteUser(member.id) : undefined
-              }
-              isUpdating={updatingState?.memberId === member.id}
-              showMatchBadge={false}
-            />
-          ))}
+          {members.map((member) => {
+            const reactionLink =
+              communityId && isAdmin
+                ? `/communities/${communityId}/admin/members/${member.id}/reactions`
+                : undefined;
+
+            return (
+              <MemberCard
+                key={member.id}
+                member={member}
+                isAdmin={isAdmin}
+                onLike={handleToggleLike}
+                onSuperLike={handleToggleSuperLike}
+                isSuperLikeLoading={superLikeLoadingMemberId === member.id}
+                onDeleteUser={
+                  isAdmin ? () => handleDeleteUser(member.id) : undefined
+                }
+                isUpdating={updatingState?.memberId === member.id}
+                showMatchBadge={false}
+                reactionLink={reactionLink}
+              />
+            );
+          })}
         </div>
       )}
     </div>

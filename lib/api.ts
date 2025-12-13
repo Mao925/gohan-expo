@@ -498,6 +498,42 @@ export async function fetchMembers(): Promise<Member[]> {
   return [];
 }
 
+export type AdminUserReactionEntry = {
+  toUser: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+};
+
+export type AdminUserHeartsResponse = {
+  fromUser: {
+    id: string;
+    name: string;
+  };
+  hearts: AdminUserReactionEntry[];
+};
+
+export type AdminUserStarsResponse = {
+  fromUser: {
+    id: string;
+    name: string;
+  };
+  stars: AdminUserReactionEntry[];
+};
+
+export async function fetchAdminUserHearts(communityId: string, fromUserId: string) {
+  return apiFetch<AdminUserHeartsResponse>(
+    `/api/admin/communities/${communityId}/users/${fromUserId}/hearts`
+  );
+}
+
+export async function fetchAdminUserStars(communityId: string, fromUserId: string) {
+  return apiFetch<AdminUserStarsResponse>(
+    `/api/admin/communities/${communityId}/users/${fromUserId}/stars`
+  );
+}
+
 export async function fetchPublicUserProfile(userId: string): Promise<PublicUserProfile> {
   return apiFetch<PublicUserProfile>(`/api/users/${userId}/profile`);
 }
