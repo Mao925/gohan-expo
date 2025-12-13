@@ -25,6 +25,7 @@ type MemberCardProps = {
   isSuperLikeLoading?: boolean;
   onSuperLike?: (memberId: string) => Promise<void> | void;
   showMatchBadge?: boolean;
+  reactionLink?: string;
 };
 
 export function MemberCard({
@@ -36,6 +37,7 @@ export function MemberCard({
   isSuperLikeLoading,
   onSuperLike,
   showMatchBadge = true,
+  reactionLink,
 }: MemberCardProps) {
   const profile = member.profile ?? null;
   const name = profile?.name ?? member.name ?? '名前未設定';
@@ -100,6 +102,16 @@ export function MemberCard({
                 onClick={onDeleteUser}
               >
                 ユーザー削除
+              </Button>
+            )}
+            {isAdmin && reactionLink && (
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+              >
+                <Link href={reactionLink}>リアクション一覧</Link>
               </Button>
             )}
             <Button
