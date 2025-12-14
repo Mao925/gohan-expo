@@ -1,14 +1,21 @@
 'use client';
 
-import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE_URL } from "@/lib/api";
 import { RegisterCard } from "@/components/auth/register-card";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("inviteToken");
-  const [error] = useState<string | null>(null);
+
+  const handleRegisterSuccess = () => {
+    const nextPath = inviteToken
+      ? `/onboarding?inviteToken=${encodeURIComponent(inviteToken)}`
+      : "/onboarding";
+
+    router.push(nextPath);
+  };
 
   const handleLineRegister = () => {
     // 1つ目と同じ「登録後に進む先」
@@ -29,8 +36,8 @@ export default function RegisterPage() {
   return (
     <RegisterCard
       description="まずは基本情報を登録しましょう。"
-      error={error}
       onLineRegister={handleLineRegister}
+      onRegistered={handleRegisterSuccess}
     />
   );
 }
