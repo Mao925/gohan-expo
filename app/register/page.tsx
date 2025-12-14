@@ -1,43 +1,58 @@
 'use client';
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { API_BASE_URL } from "@/lib/api";
-import { RegisterCard } from "@/components/auth/register-card";
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ErrorBanner } from '@/components/error-banner';
+import { API_BASE_URL } from '@/lib/api';
+import { resolveSafeRedirect } from '@/lib/redirect';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const inviteToken = searchParams.get("inviteToken");
-
-  const handleRegisterSuccess = () => {
-    const nextPath = inviteToken
-      ? `/onboarding?inviteToken=${encodeURIComponent(inviteToken)}`
-      : "/onboarding";
-
-    router.push(nextPath);
-  };
+  const redirectParam = searchParams.get('redirect');
+  const safeRedirect = useMemo(() => resolveSafeRedirect(redirectParam), [redirectParam]);
+  const [error] = useState<string | null>(null);
 
   const handleLineRegister = () => {
-    // 1つ目と同じ「登録後に進む先」
-    const nextPath = inviteToken
-      ? `/onboarding?inviteToken=${encodeURIComponent(inviteToken)}`
-      : "/onboarding";
-
-    // LINEログイン（registerモード）で登録開始
-    const url = new URL("/api/auth/line/login", API_BASE_URL);
-    url.searchParams.set("mode", "register");
-
-    // OAuth後の戻り先を onboarding に固定（1つ目の挙動に合わせる）
-    url.searchParams.set("redirect", nextPath);
-
+    const url = new URL('/api/auth/line/login', API_BASE_URL);
+    url.searchParams.set('mode', 'register');
+    if (safeRedirect) {
+      url.searchParams.set('redirect', safeRedirect);
+    }
     window.location.href = url.toString();
   };
 
   return (
-    <RegisterCard
-      description="まずは基本情報を登録しましょう。"
-      onLineRegister={handleLineRegister}
-      onRegistered={handleRegisterSuccess}
-    />
+    <Card className="mx-auto max-w-md">
+      <h2 className="text-2xl font-semibold text-slate-900">新規登録</h2>
+      <p className="mt-2 text-sm text-slate-600">
+        LINEアカウントでコミュニティに参加するには新規登録を完了してください。
+      </p>
+
+      <ErrorBanner message={error} />
+
+      <div className="mt-6 space-y-5">
+        <Button
+          type="button"
+          className="w-full bg-[#06c755] text-white hover:bg-[#05b24c]"
+          onClick={handleLineRegister}
+        >
+          LINEで新規登録
+        </Button>
+
+        <div className="mt-6 space-y-2">
+          <p className="text-center text-sm text-slate-600">すでにアカウントをお持ちの方</p>
+          <Button
+            variant="outline"
+            className="w-full border-[var(--brand)] text-[var(--brand)] bg-white hover:bg-[var(--brand)]/10"
+            asChild
+          >
+            <Link href="/login">ログインはこちら</Link>
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
