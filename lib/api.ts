@@ -498,6 +498,23 @@ export async function fetchMembers(): Promise<Member[]> {
   return [];
 }
 
+export type MyReactionCountsResponse = {
+  communityId: string;
+  me: {
+    id: string;
+  };
+  received: {
+    hearts: number;
+    stars: number;
+  };
+};
+
+export async function fetchMyReactionCounts(communityId: string) {
+  return apiFetch<MyReactionCountsResponse>(
+    `/api/communities/${communityId}/me/reaction-counts`
+  );
+}
+
 export type AdminUserReactionEntry = {
   toUser: {
     id: string;

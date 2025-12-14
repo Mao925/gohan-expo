@@ -15,12 +15,14 @@ import {
   ApiError,
   deleteMember,
   fetchMembers,
+  fetchMyReactionCounts,
   LikeAnswer,
   updateLikeStatus,
   createSuperLike,
   deleteSuperLike,
 } from "@/lib/api";
 import { Member } from "@/lib/types";
+import { ReactionIcon } from "@/components/reactions/reaction-icon";
 
 type UpdatingState = { memberId: string } | null;
 
@@ -41,6 +43,13 @@ function MembersContent() {
   });
   const { data: communityStatus } = useCommunitySelfStatus(Boolean(user));
   const communityId = communityStatus?.community?.id;
+  const {
+    data: reactionCounts,
+  } = useQuery({
+    queryKey: ["reaction-counts", communityId],
+    queryFn: () => fetchMyReactionCounts(communityId!),
+    enabled: Boolean(communityId),
+  });
   const [members, setMembers] = useState<Member[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [updatingState, setUpdatingState] = useState<UpdatingState>(null);
@@ -52,6 +61,11 @@ function MembersContent() {
   }, [data]);
 
   const isInitialLoading = isPending && members.length === 0;
+  const formatReactionCount = (value: number | null | undefined) =>
+    value === undefined || value === null ? "-" : value;
+
+  const heartsDisplay = formatReactionCount(reactionCounts?.received?.hearts);
+  const starsDisplay = formatReactionCount(reactionCounts?.received?.stars);
   const apiErrorMessage = (error as ApiError | undefined)?.message ?? null;
   const friendlyApiError =
     apiErrorMessage === "Missing Authorization header"
@@ -172,6 +186,24 @@ function MembersContent() {
       </div>
 
       <ErrorBanner message={errorMessage} />
+
+      <div className="space-y-3 rounded-[32px] border border-slate-200 bg-white/80 px-6 py-5 text-center shadow-sm shadow-slate-200/70">
+        <p className="text-sm text-slate-500">あなたとご飯に行きたい人の数</p>
+        <div className="flex items-center justify-center gap-8">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 shadow-sm shadow-red-200/70">
+              <ReactionIcon type="heart" filled />
+            </div>
+            <span className="text-2xl font-semibold text-slate-900">{heartsDisplay}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-yellow-200 bg-yellow-50 text-yellow-500 shadow-sm shadow-yellow-200/70">
+              <ReactionIcon type="star" filled />
+            </div>
+            <span className="text-2xl font-semibold text-slate-900">{starsDisplay}</span>
+          </div>
+        </div>
+      </div>
 
       {isInitialLoading ? (
         <Card className="flex items-center justify-center gap-3 p-6">
