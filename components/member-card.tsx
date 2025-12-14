@@ -9,12 +9,13 @@ import { ProfileAvatar } from '@/components/profile-avatar';
 import { formatBudgetLabel } from '@/lib/api';
 import { Member } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Heart, Loader2, Star } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   DRINKING_STYLE_LABELS,
   MEAL_STYLE_LABELS,
   GO_MEAL_FREQUENCY_LABELS,
 } from '@/lib/profile-labels';
+import { ReactionIcon } from '@/components/reactions/reaction-icon';
 
 type MemberCardProps = {
   member: Member;
@@ -161,7 +162,7 @@ export function MemberCard({
               {isUpdating ? (
                 <Loader2 className="h-5 w-5 animate-spin text-current" />
               ) : (
-                <Heart className="h-6 w-6 transition-colors duration-200" fill={isHeartActive ? 'currentColor' : 'none'} />
+                <ReactionIcon type="heart" filled={isHeartActive} />
               )}
               <span className="sr-only">{isHeartActive ? 'いいねを外す' : 'いいねする'}</span>
             </button>
@@ -175,10 +176,7 @@ export function MemberCard({
                 {isSuperLikeLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin text-current" />
                 ) : (
-                  <Star
-                    className="h-6 w-6 transition-colors duration-200"
-                    fill={isStarActive ? 'currentColor' : 'none'}
-                  />
+                  <ReactionIcon type="star" filled={isStarActive} />
                 )}
                 <span className="sr-only">
                   {isStarActive ? 'スーパーいいねを取り消す' : 'スーパーいいねを送る'}
