@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Heart } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Heart, Info, Loader2 } from "lucide-react";
 import { CommunityGate } from "@/components/community/community-gate";
 import { ErrorBanner } from "@/components/error-banner";
 import { MemberCard } from "@/components/member-card";
@@ -22,7 +22,33 @@ import {
   deleteSuperLike,
 } from "@/lib/api";
 import { Member } from "@/lib/types";
-import { ReactionIcon } from "@/components/reactions/reaction-icon";
+import {
+  ReactionIcon,
+  type ReactionType,
+} from "@/components/reactions/reaction-icon";
+
+type ReactionStatProps = {
+  type: ReactionType;
+  count: string | number;
+};
+
+function ReactionStat({ type, count }: ReactionStatProps) {
+  const containerClasses =
+    type === "heart"
+      ? "border border-red-200 bg-red-50 text-red-600 shadow-sm shadow-red-200/70"
+      : "border border-yellow-200 bg-yellow-50 text-yellow-500 shadow-sm shadow-yellow-200/70";
+
+  return (
+    <div className="flex items-center gap-4">
+      <div
+        className={`flex h-12 w-12 items-center justify-center rounded-full ${containerClasses}`}
+      >
+        <ReactionIcon type={type} filled />
+      </div>
+      <span className="text-2xl font-semibold text-slate-900">{count}</span>
+    </div>
+  );
+}
 
 type UpdatingState = { memberId: string } | null;
 
@@ -43,9 +69,7 @@ function MembersContent() {
   });
   const { data: communityStatus } = useCommunitySelfStatus(Boolean(user));
   const communityId = communityStatus?.community?.id;
-  const {
-    data: reactionCounts,
-  } = useQuery({
+  const { data: reactionCounts } = useQuery({
     queryKey: ["reaction-counts", communityId],
     queryFn: () => fetchMyReactionCounts(communityId!),
     enabled: Boolean(communityId),
@@ -53,12 +77,55 @@ function MembersContent() {
   const [members, setMembers] = useState<Member[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [updatingState, setUpdatingState] = useState<UpdatingState>(null);
-  const [superLikeLoadingMemberId, setSuperLikeLoadingMemberId] = useState<string | null>(null);
+  const [superLikeLoadingMemberId, setSuperLikeLoadingMemberId] = useState<
+    string | null
+  >(null);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const { toast } = useToast();
+  const infoWrapperRef = useRef<HTMLDivElement | null>(null);
+  const infoId = useId();
+  const popoverId = `${infoId}-reaction-info`;
+  const triggerId = `${infoId}-reaction-info-trigger`;
 
   useEffect(() => {
     setMembers(data ?? []);
   }, [data]);
+
+  useEffect(() => {
+    if (!isInfoOpen) return;
+
+    const handleOutsideOpen = (event: MouseEvent | TouchEvent) => {
+      if (
+        infoWrapperRef.current &&
+        event.target instanceof Node &&
+        infoWrapperRef.current.contains(event.target)
+      ) {
+        return;
+      }
+
+      setIsInfoOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsInfoOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideOpen);
+    document.addEventListener("touchstart", handleOutsideOpen);
+    document.addEventListener("keyup", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideOpen);
+      document.removeEventListener("touchstart", handleOutsideOpen);
+      document.removeEventListener("keyup", handleEscape);
+    };
+  }, [isInfoOpen]);
+
+  const handleInfoOpen = () => setIsInfoOpen(true);
+  const handleInfoClose = () => setIsInfoOpen(false);
+  const handleInfoToggle = () => setIsInfoOpen((prev) => !prev);
 
   const isInitialLoading = isPending && members.length === 0;
   const formatReactionCount = (value: number | null | undefined) =>
@@ -114,10 +181,9 @@ function MembersContent() {
             title: result.partnerName
               ? `${result.partnerName}さんとマッチしました！`
               : "マッチが成立しました！",
-            description:
-              result.partnerFavoriteMeals?.length
-                ? `好きなご飯: ${result.partnerFavoriteMeals.join("・")}`
-                : undefined,
+            description: result.partnerFavoriteMeals?.length
+              ? `好きなご飯: ${result.partnerFavoriteMeals.join("・")}`
+              : undefined,
           });
         }
       }
@@ -188,20 +254,51 @@ function MembersContent() {
       <ErrorBanner message={errorMessage} />
 
       <div className="space-y-3 rounded-[32px] border border-slate-200 bg-white/80 px-6 py-5 text-center shadow-sm shadow-slate-200/70">
-        <p className="text-sm text-slate-500">あなたとご飯に行きたい人の数</p>
+        <div className="flex items-center justify-center text-sm text-slate-500">
+          <p className="text-sm text-slate-500">あなたとご飯に行きたい人の数</p>
+          <div
+            ref={infoWrapperRef}
+            className="relative inline-flex ml-1"
+            onMouseEnter={handleInfoOpen}
+            onMouseLeave={handleInfoClose}
+          >
+            <button
+              id={triggerId}
+              type="button"
+              aria-label="♡/☆の説明"
+              aria-expanded={isInfoOpen}
+              aria-controls={popoverId}
+              className="rounded-full p-1 text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              onFocus={handleInfoOpen}
+              onBlur={handleInfoClose}
+              onClick={handleInfoToggle}
+            >
+              <Info className="h-4 w-4" />
+            </button>
+            {isInfoOpen && (
+              <div
+                id={popoverId}
+                role="tooltip"
+                aria-labelledby={triggerId}
+                className="absolute right-0 top-full z-50 mt-2 w-[260px] max-w-[260px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-lg shadow-slate-300/60"
+              >
+                <div className="space-y-2 leading-relaxed text-left">
+                  <p>
+                    ♡：ご飯に行きたい人に押す<br></br>
+                    （例：あまり話したことのない人）
+                  </p>
+                  <p>
+                    ☆：絶対にご飯に居て欲しい人に押す<br></br>
+                    （例：この人がいれば安心な人）
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="flex items-center justify-center gap-8">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 shadow-sm shadow-red-200/70">
-              <ReactionIcon type="heart" filled />
-            </div>
-            <span className="text-2xl font-semibold text-slate-900">{heartsDisplay}</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-yellow-200 bg-yellow-50 text-yellow-500 shadow-sm shadow-yellow-200/70">
-              <ReactionIcon type="star" filled />
-            </div>
-            <span className="text-2xl font-semibold text-slate-900">{starsDisplay}</span>
-          </div>
+          <ReactionStat type="heart" count={heartsDisplay} />
+          <ReactionStat type="star" count={starsDisplay} />
         </div>
       </div>
 
