@@ -103,16 +103,23 @@ export default function MemberReactionsPage() {
           ) : hearts.length === 0 ? (
             <p className="text-sm text-slate-500">ハートはまだありません</p>
           ) : (
-            <div className="space-y-3">
-              {hearts.map((entry) => (
-                <div
-                  key={`${entry.toUser.id}-${entry.createdAt}`}
-                  className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0"
-                >
-                  <p className="text-sm font-medium text-slate-900">{entry.toUser.name}</p>
-                  <p className="text-xs text-slate-400">{formatDate(entry.createdAt)}</p>
-                </div>
-              ))}
+            <div className="overflow-hidden rounded border border-slate-200">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">ユーザー</th>
+                    <th className="px-4 py-3">日時</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {hearts.map((entry) => (
+                    <tr key={`${entry.toUser.id}-${entry.createdAt}`}>
+                      <td className="px-4 py-3 font-medium text-slate-900">{entry.toUser.name}</td>
+                      <td className="px-4 py-3 text-xs text-slate-400">{formatDate(entry.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
@@ -129,16 +136,23 @@ export default function MemberReactionsPage() {
           ) : stars.length === 0 ? (
             <p className="text-sm text-slate-500">スターはまだありません</p>
           ) : (
-            <div className="space-y-3">
-              {stars.map((entry) => (
-                <div
-                  key={`${entry.toUser.id}-${entry.createdAt}`}
-                  className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0"
-                >
-                  <p className="text-sm font-medium text-slate-900">{entry.toUser.name}</p>
-                  <p className="text-xs text-slate-400">{formatDate(entry.createdAt)}</p>
-                </div>
-              ))}
+            <div className="overflow-hidden rounded border border-slate-200">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">ユーザー</th>
+                    <th className="px-4 py-3">日時</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {stars.map((entry) => (
+                    <tr key={`${entry.toUser.id}-${entry.createdAt}`}>
+                      <td className="px-4 py-3 font-medium text-slate-900">{entry.toUser.name}</td>
+                      <td className="px-4 py-3 text-xs text-slate-400">{formatDate(entry.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
