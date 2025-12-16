@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, Clock3, Loader2, Trash2 } from "lucide-react";
+import { CalendarDays, Clock3, Loader2, MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SurfaceCard } from "@/components/ui/surface-card";
@@ -150,6 +150,10 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
   }, [groupMeal]);
 
   const myParticipantStatus = myParticipant?.status ?? null;
+  const canAccessChat =
+    isHost ||
+    myParticipantStatus === "JOINED" ||
+    myParticipantStatus === "LATE";
   const canRespondAsInvitee =
     Boolean(myParticipant) &&
     (myParticipantStatus === "INVITED" || myParticipantStatus === "PENDING");
@@ -325,14 +329,25 @@ function GroupMealDetailContent({ params }: { params: { id: string } }) {
             {MODE_DESCRIPTIONS[groupMeal.mode]}
           </p>
         </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/group-meals?mode=REAL">一覧に戻る</Link>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/group-meals?mode=REAL">一覧に戻る</Link>
+          </Button>
+          {canAccessChat ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => router.push(`/group-meals/${groupMeal.id}/chat`)}
+              className="flex items-center gap-1"
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>箱チャット</span>
             </Button>
-            {canManage ? (
-              <Button
-                size="sm"
-                variant="outline"
+          ) : null}
+          {canManage ? (
+            <Button
+              size="sm"
+              variant="outline"
                 onClick={handleGoToEditPage}
               >
                 箱の情報を編集
