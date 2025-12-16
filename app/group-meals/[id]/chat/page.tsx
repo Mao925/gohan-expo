@@ -167,7 +167,7 @@ function GroupMealChatPageContent({ groupMealId }: GroupMealChatPageContentProps
 
   if (fatalErrorMessage) {
     return (
-      <div className="flex min-h-[100vh] flex-col">
+      <div className="flex h-dvh flex-col">
         <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <Button
@@ -200,7 +200,7 @@ function GroupMealChatPageContent({ groupMealId }: GroupMealChatPageContentProps
     }
 
   return (
-    <div className="flex min-h-[100vh] flex-col">
+    <div className="h-dvh flex flex-col">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <Button
@@ -227,7 +227,7 @@ function GroupMealChatPageContent({ groupMealId }: GroupMealChatPageContentProps
         <div
           ref={listRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-4 pb-28 pt-4"
+          className="flex-1 overflow-y-auto px-4 py-4 pb-32 pt-4"
         >
           <div className="flex flex-col gap-4">
             {nonFatalErrorMessage ? (
@@ -261,7 +261,7 @@ function GroupMealChatPageContent({ groupMealId }: GroupMealChatPageContentProps
         </div>
       </div>
 
-      <div className="border-t bg-white">
+      <div className="sticky bottom-0 z-10 border-t bg-white">
         <ChatInputBar
           value={draft}
           onChange={setDraft}
