@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CalendarDays, Clock3, Trash2 } from 'lucide-react';
+import { CalendarDays, Clock3, MessageCircle, Trash2 } from 'lucide-react';
 import { CommunityGate } from '@/components/community/community-gate';
 import { ErrorBanner } from '@/components/error-banner';
 import { Button } from '@/components/ui/button';
@@ -324,6 +324,12 @@ function GroupMealCard({ meal, currentUser, onActionError }: GroupMealCardProps)
         <div className="flex items-center gap-2">
           <Button asChild size="sm" variant="secondary">
             <Link href={`/group-meals/${meal.id}`}>詳細</Link>
+          </Button>
+          <Button asChild size="sm" variant="ghost" className="rounded-full">
+            <Link href={`/group-meals/${meal.id}/chat`} aria-label="チャットを開く">
+              <MessageCircle className="h-4 w-4" />
+              <span className="sr-only">チャット</span>
+            </Link>
           </Button>
           {canManage ? (
             <Button
