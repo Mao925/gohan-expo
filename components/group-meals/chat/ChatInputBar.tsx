@@ -32,8 +32,8 @@ export function ChatInputBar({ value, onChange, onSubmit, isSending = false, dis
   const isButtonDisabled = isInputDisabled || value.trim().length === 0;
 
   return (
-    <div className="sticky bottom-0 left-0 right-0 border-t border-slate-200 bg-white/90 px-4 py-3 shadow-[0_-4px_20px_rgba(15,23,42,0.08)] backdrop-blur">
-      <form onSubmit={handleSubmit} className="flex gap-3">
+    <div className="sticky bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 px-4 pb-[env(safe-area-inset-bottom)] pt-3 backdrop-blur">
+      <form onSubmit={handleSubmit} className="flex gap-3 pb-1">
         <Textarea
           className="flex-1 min-h-[56px] resize-none"
           value={value}
