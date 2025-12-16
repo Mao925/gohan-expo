@@ -54,7 +54,20 @@ export default function GroupMealMetadataEditPage({ params }: { params: { id: st
 
   const from = searchParams.get("from") ?? `/group-meals/${params.id}`;
   const canEdit = Boolean(groupMeal && canManageGroupMealFrontend(user, groupMeal));
-
+  const myParticipantStatus = useMemo(() => {
+    if (!groupMeal || !user) return null;
+    return (
+      groupMeal.participants.find(
+        (participant) => participant.userId === user.id && participant.status !== "CANCELLED"
+      )?.status ?? null
+    );
+  }, [groupMeal, user]);
+  const isHost = Boolean(groupMeal && user && user.id === groupMeal.host.userId);
+  const isAdmin = Boolean(user?.isAdmin);
+  const isAttending =
+    Boolean(groupMeal) &&
+    (isHost || myParticipantStatus === "JOINED" || myParticipantStatus === "LATE");
+  const canShowChatButton = isAdmin || isAttending;
   const handleCancel = () => {
     router.push(from);
   };
@@ -147,9 +160,11 @@ export default function GroupMealMetadataEditPage({ params }: { params: { id: st
           <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Group Meal</p>
           <h1 className="text-2xl font-semibold text-slate-900">箱の情報を編集</h1>
         </div>
-        <Button size="sm" variant="ghost" onClick={handleCancel}>
-          戻る
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={handleCancel}>
+            戻る
+          </Button>
+        </div>
       </div>
 
       <Card className="space-y-6">
@@ -162,6 +177,9 @@ export default function GroupMealMetadataEditPage({ params }: { params: { id: st
           autoSaveDelay={600}
           submitting={updateMutation.isPending}
           error={formError}
+          groupMealId={groupMeal.id}
+          showChatButton={canShowChatButton}
+          disableChatButton={!canShowChatButton}
         />
       </Card>
     </main>

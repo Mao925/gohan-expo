@@ -248,6 +248,24 @@ export type GroupMealCandidatesResponse = {
   candidates: GroupMealCandidate[];
 };
 
+export type GroupMealChatUser = {
+  id: string;
+  displayName: string;
+  avatarUrl?: string | null;
+};
+
+export type GroupMealChatMessage = {
+  id: string;
+  text: string;
+  createdAt: string;
+  sender: GroupMealChatUser;
+};
+
+export type GroupMealChatMessagesResponse = {
+  messages: GroupMealChatMessage[];
+  nextCursor?: string;
+};
+
 export type AvailabilitySlotDto = {
   weekday: Weekday;
   timeSlot: TimeSlot;
@@ -405,6 +423,24 @@ export async function inviteGroupMealCandidates(groupMealId: string, userIds: st
   });
 }
 
+export async function fetchGroupMealChatMessages(
+  groupMealId: string,
+  params?: { cursor?: string; limit?: number },
+  token?: string | null
+): Promise<GroupMealChatMessagesResponse> {
+  const query = new URLSearchParams();
+  const cursor = params?.cursor;
+  if (cursor && cursor !== 'undefined' && cursor !== 'null') {
+    query.set('cursor', cursor);
+  }
+  const path = query.toString()
+    ? `/api/group-meals/${groupMealId}/chat/messages?${query.toString()}`
+    : `/api/group-meals/${groupMealId}/chat/messages`;
+  return apiFetch(path, {
+    token
+  });
+}
+
 export async function respondGroupMeal(
   groupMealId: string,
   action: 'ACCEPT' | 'DECLINE',
@@ -413,6 +449,18 @@ export async function respondGroupMeal(
   await apiFetch<void>(`/api/group-meals/${groupMealId}/respond`, {
     method: 'POST',
     data: { action },
+    token
+  });
+}
+
+export async function sendGroupMealChatMessage(
+  groupMealId: string,
+  text: string,
+  token?: string | null
+): Promise<GroupMealChatMessage> {
+  return apiFetch(`/api/group-meals/${groupMealId}/chat/messages`, {
+    method: 'POST',
+    data: { text },
     token
   });
 }

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/error-banner";
 import { formatBudgetLabel, GroupMealBudget, TimeSlot } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { MessageCircle } from "lucide-react";
 
 const createTimeOptions = (startMinutes: number, endMinutes: number): string[] => {
   const options: string[] = [];
@@ -40,6 +42,9 @@ interface GroupMealMetadataFormProps {
   submitLabel?: string;
   showActions?: boolean;
   autoSaveDelay?: number;
+  groupMealId?: string;
+  showChatButton?: boolean;
+  disableChatButton?: boolean;
 }
 
 const BUDGET_OPTIONS: GroupMealBudget[] = ["UNDER_1000", "UNDER_1500", "UNDER_2000", "OVER_2000"];
@@ -54,7 +59,11 @@ export function GroupMealMetadataForm({
   submitLabel,
   showActions = true,
   autoSaveDelay = 0,
+  groupMealId,
+  showChatButton,
+  disableChatButton
 }: GroupMealMetadataFormProps) {
+  const router = useRouter();
   const [title, setTitle] = useState(initialValues.title);
   const [date, setDate] = useState(initialValues.date);
   const [timeSlot, setTimeSlot] = useState(initialValues.timeSlot);
@@ -132,6 +141,13 @@ export function GroupMealMetadataForm({
       budget,
     });
   };
+
+  const canShowChatButton = showChatButton ?? Boolean(groupMealId);
+  const isChatButtonDisabled = Boolean(disableChatButton || submitting || !groupMealId);
+  const handleOpenChat = useCallback(() => {
+    if (!groupMealId) return;
+    router.push(`/group-meals/${groupMealId}/chat`);
+  }, [groupMealId, router]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -231,7 +247,20 @@ export function GroupMealMetadataForm({
         </select>
       </div>
       {showActions !== false && (
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex items-center justify-end gap-2 pt-2">
+          {canShowChatButton ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              disabled={Boolean(isChatButtonDisabled)}
+              onClick={handleOpenChat}
+              className="flex items-center gap-1"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span>箱チャット</span>
+            </Button>
+          ) : null}
           {onCancel ? (
             <Button
               type="button"

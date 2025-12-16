@@ -85,6 +85,15 @@ export function AppShell({ children }: AppShellProps) {
     void router.push(`/use-case?from=${encodeURIComponent(from)}`);
   };
 
+  const isChatRoute = Boolean(pathname?.match(/^\/group-meals\/[^/]+\/chat\/?$/));
+
+  const mainClasses = cn(
+    "flex-1",
+    isChatRoute
+      ? "w-full max-w-none px-0"
+      : "mx-auto w-full max-w-5xl px-4 pt-8 pb-16 md:pb-14"
+  );
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg-soft)] text-[var(--text-muted)]">
@@ -93,95 +102,103 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
+  const shellContent = (
+    <ShellChromeContext.Provider value={chromeContextValue}>
+      <main className={mainClasses}>{children}</main>
+    </ShellChromeContext.Provider>
+  );
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg-soft)] text-[var(--text-strong)]">
-      <header
-        className={cn(
-          "app-chrome-top sticky top-0 z-30 border-b border-[var(--border)] bg-white/90 backdrop-blur",
-          isChromeHidden && "hidden"
-        )}
-      >
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-3 text-lg font-semibold text-[var(--text-strong)]">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--card-muted)] text-[var(--brand-strong)]">
-              🍚
-            </span>
-            <span>
-              GO<span className="text-[var(--brand-strong)]">飯</span>
-            </span>
-          </Link>
+      {!isChatRoute && (
+        <header
+          className={cn(
+            "app-chrome-top sticky top-0 z-30 border-b border-[var(--border)] bg-white/90 backdrop-blur",
+            isChromeHidden && "hidden"
+          )}
+        >
+          <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-6">
+            <Link href="/" className="flex items-center gap-3 text-lg font-semibold text-[var(--text-strong)]">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--card-muted)] text-[var(--brand-strong)]">
+                🍚
+              </span>
+              <span>
+                GO<span className="text-[var(--brand-strong)]">飯</span>
+              </span>
+            </Link>
 
         <nav className="hidden items-center gap-1 text-sm md:flex">
-            {navItems.map(({ href, label }) => (
+              {navItems.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    "rounded-full px-3 py-2 font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--card-muted)] hover:text-[var(--text-strong)]",
+                    isActive(href) && "bg-[var(--brand)] text-white shadow-sm"
+                  )}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-3 text-sm">
+              {user ? <span className="hidden text-sm text-[var(--text-muted)] sm:block">{user.name}</span> : null}
+              {user ? (
+                <Button variant="ghost" size="sm" onClick={() => logout?.()}>
+                  ログアウト
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/login">ログイン</Link>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                    <Link href="/admin/login">管理者</Link>
+                  </Button>
+                </div>
+              )}
+              {!isLoading && user?.hasCompletedOnboarding && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="whitespace-nowrap"
+                  onClick={handleOpenUseCase}
+                >
+                  使用方法
+                </Button>
+              )}
+            </div>
+          </div>
+        </header>
+      )}
+
+      {shellContent}
+
+      {!isChatRoute && (
+        <nav
+          className={cn(
+            "app-chrome-bottom fixed inset-x-3 bottom-3 z-30 mx-auto max-w-xl rounded-3xl border border-[var(--border)] bg-white/95 shadow-lg backdrop-blur md:hidden",
+            isChromeHidden && "hidden"
+          )}
+        >
+          <div className="flex items-center justify-between px-3 py-2">
+            {mobileNavItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "rounded-full px-3 py-2 font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--card-muted)] hover:text-[var(--text-strong)]",
-                  isActive(href) && "bg-[var(--brand)] text-white shadow-sm"
+                  "flex flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-1 text-[11px] font-medium transition",
+                  isActive(href) ? "text-[var(--brand-strong)]" : "text-[var(--text-muted)] hover:text-[var(--text-strong)]"
                 )}
               >
-                {label}
+                {Icon ? <Icon className="h-5 w-5" /> : null}
+                <span className="whitespace-nowrap">{label}</span>
               </Link>
             ))}
-          </nav>
-
-          <div className="flex items-center gap-3 text-sm">
-            {user ? <span className="hidden text-sm text-[var(--text-muted)] sm:block">{user.name}</span> : null}
-            {user ? (
-              <Button variant="ghost" size="sm" onClick={() => logout?.()}>
-                ログアウト
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/login">ログイン</Link>
-                </Button>
-                <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
-                  <Link href="/admin/login">管理者</Link>
-                </Button>
-              </div>
-            )}
-            {!isLoading && user?.hasCompletedOnboarding && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="whitespace-nowrap"
-                onClick={handleOpenUseCase}
-              >
-                使用方法
-              </Button>
-            )}
           </div>
-        </div>
-      </header>
-
-      <ShellChromeContext.Provider value={chromeContextValue}>
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-16 md:pb-14">{children}</main>
-      </ShellChromeContext.Provider>
-
-      <nav
-        className={cn(
-          "app-chrome-bottom fixed inset-x-3 bottom-3 z-30 mx-auto max-w-xl rounded-3xl border border-[var(--border)] bg-white/95 shadow-lg backdrop-blur md:hidden",
-          isChromeHidden && "hidden"
-        )}
-      >
-        <div className="flex items-center justify-between px-3 py-2">
-          {mobileNavItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-1 text-[11px] font-medium transition",
-                isActive(href) ? "text-[var(--brand-strong)]" : "text-[var(--text-muted)] hover:text-[var(--text-strong)]"
-              )}
-            >
-              {Icon ? <Icon className="h-5 w-5" /> : null}
-              <span className="whitespace-nowrap">{label}</span>
-            </Link>
-          ))}
-        </div>
-      </nav>
+        </nav>
+      )}
     </div>
   );
 }
