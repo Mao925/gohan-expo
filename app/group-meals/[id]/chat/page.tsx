@@ -161,7 +161,7 @@ function GroupMealChatPageContent({ groupMealId }: GroupMealChatPageContentProps
     (shouldShowChatErrorMessage
       ? chatError?.message ?? 'メッセージの読み込みに失敗しました'
       : null) ??
-    (shouldShowDetailErrorMessage ? detailApiError.message : null);
+    (shouldShowDetailErrorMessage ? detailApiError?.message ?? null : null);
 
   const isEmptyChat = !isFetching && messages.length === 0;
 
@@ -250,10 +250,10 @@ function GroupMealChatPageContent({ groupMealId }: GroupMealChatPageContentProps
                 まだメッセージはありません。
               </div>
             ) : null}
-            {messages.map((message) => (
-              <ChatMessageBubble
-                key={message.id}
-                message={message}
+          {messages.map((message: Parameters<typeof ChatMessageBubble>[0]['message']) => (
+            <ChatMessageBubble
+              key={message.id}
+              message={message}
                 isMine={message.sender.id === user?.id}
               />
             ))}

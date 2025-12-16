@@ -67,6 +67,7 @@ export default function GroupMealMetadataEditPage({ params }: { params: { id: st
   const isAttending =
     Boolean(groupMeal) &&
     (isHost || myParticipantStatus === "JOINED" || myParticipantStatus === "LATE");
+  const canShowChatButton = isAdmin || isAttending;
   const handleCancel = () => {
     router.push(from);
   };

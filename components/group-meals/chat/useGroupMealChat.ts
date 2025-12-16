@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { QueryFunctionContext, useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useAuth } from '@/context/auth-context';
 import {
   ApiError,
@@ -16,7 +16,7 @@ const CHAT_PAGE_SIZE = 30;
 export function useGroupMealChat(groupMealId: string) {
   const { token } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = ['group-meal-chat', groupMealId, token];
+  const queryKey = ['group-meal-chat', groupMealId, token] as const;
 
   const {
     data,
@@ -27,16 +27,19 @@ export function useGroupMealChat(groupMealId: string) {
     isLoading,
     error,
     refetch
-  } = useInfiniteQuery<GroupMealChatMessagesResponse, ApiError>({
+  } = useInfiniteQuery<GroupMealChatMessagesResponse, ApiError, InfiniteData<GroupMealChatMessagesResponse>, typeof queryKey>({
     queryKey,
-    queryFn: ({ pageParam }) =>
-      fetchGroupMealChatMessages(
+    queryFn: (context: QueryFunctionContext<typeof queryKey>) => {
+      const pageParam = context.pageParam as string | undefined;
+      return fetchGroupMealChatMessages(
         groupMealId,
-        { cursor: pageParam, limit: CHAT_PAGE_SIZE },
+        { cursor: pageParam ?? undefined, limit: CHAT_PAGE_SIZE },
         token
-      ),
+      );
+    },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: Boolean(groupMealId) && Boolean(token),
+    initialPageParam: undefined,
     staleTime: 0
   });
 
